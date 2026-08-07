@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 57%
+**Implementation progress:** 71%
 
-**Completed implementation checkpoints:** 4 of 7
+**Completed implementation checkpoints:** 5 of 7
 
-**Current checkpoint:** Checkpoint 5 — Credential discovery, extraction, and validation
+**Current checkpoint:** Checkpoint 6 — Complete reviewer experience
 
-**Current status:** Checkpoints 1–4 complete and pushed; Checkpoint 5 is ready to begin.
+**Current status:** Checkpoints 1–5 complete and pushed; Checkpoint 6 is ready to begin.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -144,13 +144,41 @@ The current Browserbase API key resolves its project automatically; no separate 
 - The harness reported identical `SESSION_ID` and `RESUMED_SESSION_ID` values and `SAME_SESSION_RESUME=true`.
 - `browse cloud sessions get` confirmed the handoff session closed with status `COMPLETED`.
 
+### Checkpoint 5 — Credential discovery, extraction, and validation
+
+**Status:** complete
+
+**Implementation commit:** `e5147a0`
+
+**Delivered:**
+
+- Generic browser-agent discovery across official developer, API, integration, token, and security settings without app-specific routes.
+- Structured credential evidence for API keys, personal access tokens, bearer tokens, OAuth clients, and public demo keys.
+- Official-domain and planned-type validation before any extracted credential becomes a success result.
+- Distinct `validated_success` and `obtained_unverified` results; validation requires an actually performed harmless official check.
+- No-browser public credential results only when the exact value appears verbatim in fetched official documentation.
+- Structured blocker, clarification, technical-failure, cancellation, and timeout results.
+- Secret masking/redaction helpers, no secret interpolation into prompts, transient in-memory handling, and an explicit final credential field with copy control.
+- Session cleanup after credential success and every tested terminal browser path.
+
+**TDD evidence:** validated credential extraction, unverified results, hostile source rejection, masking/redaction, public demo credentials, terminal route storage, cancellation results, and Stagehand credential mapping were introduced through public-seam tests.
+
+**Verification evidence:**
+
+- `npm test` — passed; 45 tests across 11 files.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed.
+- `npm audit --audit-level=high` — passed; the previously documented 17 low-severity Stagehand transitive findings remain.
+- Tracked-secret scan and `git diff --check` — passed.
+
 ## Active checkpoint
 
-### Checkpoint 5 — Credential discovery, extraction, and validation
+### Checkpoint 6 — Complete reviewer experience
 
 **Status:** not started
 
-**Next action:** implement generic post-auth credential-page discovery and secret-safe extraction through the existing same-session browser seam, starting with red tests for masked status output and terminal result classification.
+**Next action:** finish consent, live progress and cancel controls, remove remaining rough UI states, and add full local end-to-end coverage for direct, discovery, public-key, HITL, blocker, and technical-failure journeys.
 
 ## Build log
 
@@ -163,3 +191,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 3 complete; implementation at 43% | `02689d5`, live Browserbase session completed and full verification passed |
 | 2026-08-08 | Checkpoint 4 automated implementation pushed; progress remains 43% pending manual handoff | `2060bbb`, 37 tests and full local verification passed |
 | 2026-08-08 | Checkpoint 4 complete; implementation at 57% | `db2192e`, live human takeover and unchanged-session resume verified |
+| 2026-08-08 | Checkpoint 5 complete; implementation at 71% | `e5147a0`, 45 tests and full verification passed |
