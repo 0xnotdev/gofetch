@@ -1,4 +1,7 @@
-import { runRequestSchema, type RunSnapshot } from "@/domain/run";
+import { runRequestSchema, type PlannedRunSnapshot } from "@/domain/run";
+import type { CredentialPlan } from "@/domain/credential-plan";
+import { buildConfiguredCredentialPlan } from "@/research/runtime";
+import { saveRun } from "@/run/run-store";
 
 function invalidRequest(): Response {
   return Response.json(
@@ -12,27 +15,67 @@ function invalidRequest(): Response {
   );
 }
 
-export async function POST(request: Request): Promise<Response> {
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return invalidRequest();
-  }
-
-  const parsed = runRequestSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return invalidRequest();
-  }
-
-  const run: RunSnapshot = {
-    id: crypto.randomUUID(),
-    query: parsed.data.query,
-    state: "resolving",
-    createdAt: new Date().toISOString(),
-  };
-
-  return Response.json(run, { status: 201 });
+interface PostRunsDependencies {
+  buildPlan?: (query: string) => Promise<CredentialPlan>;
+  saveRun?: (run: PlannedRunSnapshot) => void;
 }
+
+export function createPostRunsHandler(dependencies: PostRunsDependencies = {}) {
+  return async function postRuns(request: Request): Promise<Response> {
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return invalidRequest();
+    }
+
+    const parsed = runRequestSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return invalidRequest();
+    }
+
+    const run: PlannedRunSnapshot = {
+      id: crypto.randomUUID(),
+      query: parsed.data.query,
+      state: "resolving",
+      createdAt: new Date().toISOString(),
+    };
+
+    if (dependencies.buildPlan) {
+      let plan: CredentialPlan;
+
+      try {
+        plan = await dependencies.buildPlan(parsed.data.query);
+      } catch {
+        return Response.json(
+          {
+            error: {
+              code: "research_failed",
+              message: "GoFetch could not complete official-source research for this run.",
+            },
+          },
+          { status: 502 },
+        );
+      }
+
+      run.plan = plan;
+      run.state = plan.requiresConfirmation
+        ? "awaiting_target_confirmation"
+        : plan.path === "blocked"
+          ? "blocked"
+          : plan.path === "insufficient_evidence"
+            ? "needs_clarification"
+            : "planning";
+    }
+
+    dependencies.saveRun?.(run);
+    return Response.json(run, { status: 201 });
+  };
+}
+
+export const POST = createPostRunsHandler({
+  buildPlan: buildConfiguredCredentialPlan,
+  saveRun,
+});

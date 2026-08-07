@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { CredentialPlan } from "./credential-plan";
+
 export const runRequestSchema = z.object({
   query: z.string().trim().min(1),
 });
@@ -28,6 +30,11 @@ export interface RunSnapshot {
   query: string;
   state: RunState;
   createdAt: string;
+}
+
+export interface PlannedRunSnapshot extends RunSnapshot {
+  plan?: CredentialPlan;
+  targetConfirmedAt?: string;
 }
 
 export interface ProgressEvent {

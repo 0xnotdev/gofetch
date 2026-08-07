@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { POST } from "../src/app/api/runs/route";
+import { createPostRunsHandler } from "../src/app/api/runs/route";
 
 describe("POST /api/runs", () => {
+  const POST = createPostRunsHandler();
+
   it("creates a run for arbitrary app requirements", async () => {
     const response = await POST(
       new Request("http://localhost/api/runs", {
@@ -51,6 +53,67 @@ describe("POST /api/runs", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "invalid_request" },
+    });
+  });
+
+  it("returns a researched plan and pauses before acting on a discovered app", async () => {
+    const handler = createPostRunsHandler({
+      buildPlan: async () => ({
+        inputMode: "discovery",
+        appName: "Fable Mail",
+        selectionReason: "It matches the requested capability and has a free API.",
+        clarificationQuestion: null,
+        requiresConfirmation: true,
+        path: "signup_required",
+        credentialTypes: ["api_key"],
+        summary: "Create a free account and generate an API key.",
+        signupUrl: "https://fable-mail.test/signup",
+        blocker: null,
+        officialSources: ["https://docs.fable-mail.test/api-keys"],
+      }),
+    });
+
+    const response = await handler(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "an email delivery app with a free API" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      query: "an email delivery app with a free API",
+      state: "awaiting_target_confirmation",
+      plan: {
+        appName: "Fable Mail",
+        inputMode: "discovery",
+        path: "signup_required",
+      },
+    });
+  });
+
+  it("reports research infrastructure failures without leaking provider details", async () => {
+    const handler = createPostRunsHandler({
+      buildPlan: async () => {
+        throw new Error("secret provider payload");
+      },
+    });
+
+    const response = await handler(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "Northstar Tasks" }),
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "research_failed",
+        message: "GoFetch could not complete official-source research for this run.",
+      },
     });
   });
 });

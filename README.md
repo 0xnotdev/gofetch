@@ -16,6 +16,14 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+For live research, configure:
+
+- `BROWSERBASE_API_KEY` for Browserbase Search and Fetch.
+- `GEMINI_API_KEY` for structured target resolution and credential-path planning.
+- `GEMINI_MODEL` only when overriding the default `gemini-3.1-flash-lite` model.
+
+Provider keys are read only by the server runtime and are never returned to the browser.
+
 ## Verification
 
 ```bash
@@ -27,4 +35,6 @@ npm run build
 
 ## Current capability
 
-Checkpoint 1 establishes the web application, typed run contracts, and the first vertical slice: arbitrary non-empty app text can create a run in the `resolving` state. Research and browser execution arrive in subsequent checkpoints.
+Checkpoints 1 and 2 establish the application foundation and generic planning flow. A run can accept either a direct app name or requirements, search and fetch official sources through Browserbase, resolve and classify the path with schema-validated Gemini output, reject unverified source URLs, ask one focused clarification question for ambiguous input, and require confirmation before acting on a discovered app.
+
+Browser execution and live human takeover arrive in the next checkpoints.

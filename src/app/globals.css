@@ -167,6 +167,64 @@ h1 {
   font-size: 0.86rem;
 }
 
+.plan {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.plan-target {
+  font-weight: 800;
+}
+
+.confirmation-note {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  color: var(--muted);
+}
+
+.confirmation-box {
+  display: grid;
+  gap: 10px;
+}
+
+.secondary-button {
+  width: fit-content;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--accent);
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.source-list a {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--accent);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
 .expectations ol {
   margin: 24px 0;
   padding-left: 1.25rem;
