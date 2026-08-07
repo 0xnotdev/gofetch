@@ -151,7 +151,8 @@ describe("GeminiPlanningModel", () => {
     const planner = new GeminiPlanningModel({
       generate: async ({ schema }) =>
         schema.parse({
-          path: "A public demo credential is available for initial exploration.",
+          workflowCategory:
+            "A public demo credential is available for initial exploration.",
           credentialTypes: ["API key", "DEMO_KEY api key"],
           summary: "The official docs provide a rate-limited demo credential.",
           signupUrl: null,
@@ -194,7 +195,7 @@ describe("GeminiPlanningModel", () => {
     const planner = new GeminiPlanningModel({
       generate: async ({ schema }) =>
         schema.parse({
-          path: "A public demo key is documented for evaluation.",
+          workflowCategory: "A public demo key is documented for evaluation.",
           credentialTypes: ["API key"],
           summary: "The official docs publish a limited demo key.",
           signupUrl: null,
@@ -232,6 +233,87 @@ describe("GeminiPlanningModel", () => {
         usageNote: "Use the demo key for evaluation.",
         limitations: "Lower rate limits apply.",
       },
+    });
+  });
+
+  it("normalizes a loose signup classification after provider extraction", async () => {
+    const sourceUrl = "https://docs.example.test/authentication";
+    const signupUrl = "https://www.example.test/signup";
+    const planner = new GeminiPlanningModel({
+      generate: async ({ schema }) =>
+        schema.parse({
+          workflowCategory:
+            "Create an account, then generate an authentication token.",
+          credentialTypes: ["Auth Token"],
+          summary: "The official docs require an account before issuing a token.",
+          signupUrl,
+          blocker: null,
+          publicCredential: null,
+        }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "communications API",
+        target: {
+          inputMode: "direct",
+          appName: "Example Communications",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [
+          {
+            url: sourceUrl,
+            content: "Sign up for an account, then generate an Auth Token.",
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      path: "signup_required",
+      credentialTypes: ["bearer_token"],
+      signupUrl,
+      publicCredential: null,
+    });
+  });
+
+  it("uses a verified official source when a credential category lacks a signup URL", async () => {
+    const sourceUrl = "https://docs.example.test/identity/api-keys";
+    const planner = new GeminiPlanningModel({
+      generate: async () => ({
+        workflowCategory: "Identity and Access Management (IAM)",
+        credentialTypes: ["API Key"],
+        summary: "Authenticate API requests with account-scoped API keys.",
+        signupUrl: null,
+        blocker: null,
+        publicCredential: null,
+      }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "communications API",
+        target: {
+          inputMode: "direct",
+          appName: "Example Communications",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [
+          {
+            url: sourceUrl,
+            content: "Create and manage API keys from your account console.",
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      path: "signup_required",
+      credentialTypes: ["api_key"],
+      signupUrl: sourceUrl,
+      publicCredential: null,
     });
   });
 });
