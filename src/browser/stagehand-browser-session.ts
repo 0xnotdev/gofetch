@@ -83,6 +83,7 @@ interface StagehandPageAdapter {
     options: { waitUntil: "domcontentloaded"; timeoutMs: number },
   ): Promise<unknown>;
   url(): string;
+  waitForTimeout(timeoutMs: number): Promise<void>;
 }
 
 interface StagehandAgentResultAdapter {
@@ -208,7 +209,7 @@ class StagehandBrowserSession implements BrowserSession {
       timeoutMs: 45_000,
     });
     throwIfAborted(signal);
-    this.#assertAllowedUrl(page.url());
+    this.#trustInitialRedirect(page.url());
   }
 
   async execute(
@@ -267,14 +268,10 @@ class StagehandBrowserSession implements BrowserSession {
           decision.summary,
         )
       ) {
-        const waitResult = await this.#stagehand.act(
-          "Wait for the current page to finish loading.",
-        );
+        await page.waitForTimeout(1_500);
         throwIfAborted(signal);
         this.#assertAllowedUrl(page.url());
-        if (waitResult.success) {
-          continue;
-        }
+        continue;
       }
 
       if (decision.kind !== "act") {
@@ -335,6 +332,14 @@ class StagehandBrowserSession implements BrowserSession {
     ) {
       throw new Error("Browser navigation moved outside the verified domain policy.");
     }
+  }
+
+  #trustInitialRedirect(value: string): void {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) {
+      throw new Error("Browser navigation moved outside the verified domain policy.");
+    }
+    this.#allowedDomains.add(url.hostname);
   }
 }
 

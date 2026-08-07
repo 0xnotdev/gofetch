@@ -245,6 +245,34 @@ function verifiedSignupUrl(
     : null;
 }
 
+function documentedSignupUrl(documents: SourceDocument[]): string | null {
+  const candidates: Array<{ url: string; score: number }> = [];
+  const anchorPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+  for (const document of documents) {
+    for (const match of document.content.matchAll(anchorPattern)) {
+      const href = match[1];
+      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      let score = 0;
+      if (/sign\s*up|create (?:an? )?account|register/i.test(label)) score = 4;
+      else if (/start (?:for )?free|try (?:it )?free/i.test(label)) score = 3;
+      else if (/get started/i.test(label)) score = 2;
+      if (score === 0) continue;
+
+      try {
+        const url = new URL(href, document.url);
+        if (url.protocol === "https:" && !url.username && !url.password) {
+          candidates.push({ url: url.toString(), score });
+        }
+      } catch {
+        // Ignore malformed links from otherwise usable official documents.
+      }
+    }
+  }
+
+  return candidates.sort((left, right) => right.score - left.score)[0]?.url ?? null;
+}
+
 function normalizePathClassification(
   value: unknown,
   documents: SourceDocument[],
@@ -282,12 +310,16 @@ function normalizePathClassification(
       credentialTypes: [...new Set(normalizedTypes)],
       signupUrl:
         normalizedPath === "signup_required"
-          ? verifiedSignupUrl(raw.signupUrl, documents) ?? documents[0]?.url ?? null
+          ? documentedSignupUrl(documents) ??
+            verifiedSignupUrl(raw.signupUrl, documents) ??
+            documents[0]?.url ??
+            null
           : raw.signupUrl,
     };
   }
 
-  const signupUrl = verifiedSignupUrl(raw.signupUrl, documents);
+  const signupUrl =
+    documentedSignupUrl(documents) ?? verifiedSignupUrl(raw.signupUrl, documents);
   const blocker =
     typeof raw.blocker === "string" && raw.blocker.trim() ? raw.blocker : null;
   const summary =

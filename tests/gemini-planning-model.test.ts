@@ -353,4 +353,42 @@ describe("GeminiPlanningModel", () => {
       publicCredential: null,
     });
   });
+
+  it("prefers a documented account-creation link over a documentation fallback", async () => {
+    const sourceUrl = "https://docs.example.test/identity/api-keys";
+    const signupUrl = "https://accounts.example.test/register";
+    const planner = new GeminiPlanningModel({
+      generate: async () => ({
+        workflowCategory: "signup_required",
+        credentialTypes: ["api_key"],
+        summary: "Create an account and generate an API key.",
+        signupUrl: sourceUrl,
+        blocker: null,
+        publicCredential: null,
+      }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "Example API",
+        target: {
+          inputMode: "direct",
+          appName: "Example API",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [
+          {
+            url: sourceUrl,
+            content: `<nav><a href="${signupUrl}">Start free</a></nav><main>Manage API keys.</main>`,
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      path: "signup_required",
+      signupUrl,
+    });
+  });
 });

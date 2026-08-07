@@ -176,6 +176,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
       url: vi.fn().mockReturnValue("https://accounts.example.test/register"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
     };
     const stagehand = {
       browserbaseSessionID: "bb-session-current-context",
@@ -326,6 +327,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
       url: vi.fn().mockReturnValue("https://accounts.example.test/register"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
     };
     const extract = vi
       .fn()
@@ -379,6 +381,42 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         new AbortController().signal,
       ),
     ).resolves.toMatchObject({ kind: "human_required" });
-    expect(act).toHaveBeenCalledWith("Wait for the current page to finish loading.");
+    expect(page.waitForTimeout).toHaveBeenCalledWith(1_500);
+    expect(act).not.toHaveBeenCalled();
+  });
+
+  it("accepts the immediate HTTPS redirect from a verified signup URL", async () => {
+    let currentUrl = "about:blank";
+    const page = {
+      goto: vi.fn().mockImplementation(async () => {
+        currentUrl = "https://login.example.test/register";
+      }),
+      url: vi.fn(() => currentUrl),
+    };
+    const stagehand = ({
+      browserbaseSessionID: "bb-signup-redirect",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-signup-redirect",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract: vi.fn(),
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const signal = new AbortController().signal;
+    const session = await factory.create(signal);
+    await session.setAllowedDomains(["www.example.test"]);
+
+    await expect(
+      session.navigate("https://www.example.test/start-free", signal),
+    ).resolves.toBeUndefined();
   });
 });
