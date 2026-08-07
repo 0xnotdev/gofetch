@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Assignment complete, verified, deployed, documented, and pushed.
+**Current status:** Assignment complete, verified, deployed, documented, and pushed; post-completion Twilio regression fixed and hosted acceptance passed.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -228,13 +228,40 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 **Final verification evidence:**
 
-- `npm test` — passed; 60 tests across 13 files.
+- `npm test` — passed; 62 tests across 13 files.
 - `npm run typecheck` — passed.
 - `npm run lint` — passed.
 - `npm run build` — passed; all UI and API routes built successfully.
 - `git diff --check` — passed.
 - Tracked-secret scan — passed; only the blank `.env.example` assignment is tracked.
 - Live same-session handoff remains verified by Browserbase session `d2783f59-7f63-4784-9f50-d95cdbfca7aa`, including human entry and `SAME_SESSION_RESUME=true`.
+
+## Post-completion maintenance
+
+### Provider signup-path normalization
+
+**Status:** complete
+
+**Implementation commit:** `3c97c86`
+
+**Reported symptom:** direct input `twilio api` returned the generic `research_failed` UI message.
+
+**Root cause:** Browserbase completed the official-source research but sometimes used a documentation path, section name, or descriptive phrase in the loose classification field instead of the required workflow-category enum. The strict internal parser correctly rejected that output, but the rejection surfaced as an avoidable technical failure.
+
+**Delivered:**
+
+- Renamed and described the provider-facing field as `workflowCategory` so its meaning is unambiguous.
+- Added generic normalization for descriptive signup classifications and token terminology without app-name routing.
+- Uses a retrieved official HTTPS document as the safe browser starting point when a signup credential path is evidenced but a separate signup URL is absent.
+- Preserved verbatim official-document verification for public credentials and the strict internal result schema.
+- Removed all temporary diagnostics after confirming the cause.
+
+**Verification evidence:**
+
+- The original local `twilio api` provider loop changed from HTTP 502 to HTTP 201 with `state: planning`, `path: signup_required`, `credentialTypes: api_key`, and three official sources.
+- Hosted acceptance after Render marked `3c97c86` live selected Twilio, returned `signup_required`, displayed three exact `twilio.com` sources, and exposed `Start browser work`.
+- Two new regression tests cover descriptive signup output and verified-official-source fallback.
+- Full suite passed with 62 tests across 13 files, plus typecheck, lint, production build, high-severity audit gate, secret scan, and `git diff --check`.
 
 ## Build log
 
@@ -251,3 +278,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 6 complete; implementation at 86% | `7ca2a04`, 56 tests, live Model Gateway planning, API plan, and browser smoke passed |
 | 2026-08-08 | Checkpoint 7 deployment preparation pushed; progress remains 86% | `c95cf18`, Render Blueprint, architecture notes, and local deployment build passed |
 | 2026-08-08 | Checkpoint 7 complete; assignment at 100% | `fee3f12`, 60 tests, clean production build, Render deployment, hosted direct/discovery/public-credential acceptance passed |
+| 2026-08-08 | Twilio provider-schema regression fixed; assignment remains at 100% | `3c97c86`, 62 tests, local provider repro and hosted Twilio acceptance passed |
