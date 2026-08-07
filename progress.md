@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 3 — Generic browser execution and lifecycle safety
 
-**Current status:** Checkpoints 1–2 complete and pushed; Checkpoint 3 ready to begin.
+**Current status:** Checkpoints 1–2 complete and pushed. Checkpoint 3 implementation and automated verification are pushed; its required live Browserbase connectivity check is waiting for local provider credentials.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -87,9 +87,32 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 
 ### Checkpoint 3 — Generic browser execution and lifecycle safety
 
-**Status:** not started
+**Status:** in progress
 
-**Next action:** define the browser-session lifecycle seam, add Browserbase/Stagehand dependencies, and implement create → navigate → stop/cleanup as the first tracer bullet.
+**Interim implementation commit:** `75576d8`
+
+**Delivered so far:**
+
+- Generic Stagehand/Browserbase session adapter with semantic DOM-mode execution and no named-app routing.
+- Dynamic exact-host domain policy derived only from secure, credential-free official plan URLs.
+- One-active-run locking, three-session process quota, rapid-start throttling, 12-minute timeout, and explicit cancellation.
+- Hard payment/card stop, CAPTCHA auto-solving disabled, recording/logging disabled, and force-close cleanup on terminal and partial-initialization paths.
+- Server execution and cancellation endpoints plus a quota-conscious one-session connectivity command.
+- Stagehand's transitive high-severity `undici` advisory is patched through an override. The remaining audit findings are 17 low-severity AI SDK advisories for which Stagehand 3.7.1 has no compatible patched 3.x dependency release.
+
+**TDD evidence:** dynamic navigation/cleanup, payment stop, one-run locking, quota rejection, throttling, timeout, cancellation, cleanup failure, Stagehand configuration/mapping, partial initialization cleanup, execution routing, confirmation enforcement, and cancellation routing were each introduced through observed red→green cycles.
+
+**Automated verification evidence:**
+
+- `npm ci` — passed.
+- `npm test` — passed; 30 tests across 9 files.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; execution and cancellation API routes built successfully.
+- `npm audit --audit-level=high` — passed; low-severity transitive findings remain as documented above.
+- `git diff --check` — passed.
+
+**Remaining exit check:** run `npm run check:browserbase` once after `BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID` are configured in `.env.local`. These values are currently absent, so no browser quota was consumed and Checkpoint 3 remains at 29% rather than being marked complete.
 
 ## Build log
 
@@ -98,3 +121,4 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 | 2026-08-08 | Scope/repository preparation complete; implementation remains at 0% | Documentation commits on `main` |
 | 2026-08-08 | Checkpoint 1 complete; implementation at 14% | `398418d`, clean install and full verification passed |
 | 2026-08-08 | Checkpoint 2 complete; implementation at 29% | `45d5a14`, 15 tests and full verification passed |
+| 2026-08-08 | Checkpoint 3 automated implementation pushed; progress remains 29% pending live connectivity | `75576d8`, 30 tests and full local verification passed |
