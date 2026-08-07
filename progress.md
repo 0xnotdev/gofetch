@@ -176,9 +176,18 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Checkpoint 6 — Complete reviewer experience
 
-**Status:** not started
+**Status:** in progress
 
-**Next action:** finish consent, live progress and cancel controls, remove remaining rough UI states, and add full local end-to-end coverage for direct, discovery, public-key, HITL, blocker, and technical-failure journeys.
+**Delivered so far:**
+
+- Mandatory pre-run authorization and Browserbase-retention disclosure.
+- Reviewer-readable progress milestones, terminal credential/failure panels, and corrected UI text.
+- Cancel control during agent work, Live View takeover, and handback, with stale async responses prevented from overwriting cancellation.
+- Public-seam journey coverage for direct input → HITL → validated same-session success and redacted browser-infrastructure failure.
+
+**Interim verification:** targeted journey tests, typecheck, lint, production build, and `git diff --check` pass.
+
+**Next action:** complete discovery-confirmation, public-key, blocker, cancellation, and timeout journey fixtures; then run the entire clean suite and browser-level reviewer smoke test.
 
 ## Build log
 

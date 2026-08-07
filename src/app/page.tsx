@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 import type { PlannedRunSnapshot, RunResult, SuccessResult } from "@/domain/run";
 
@@ -15,6 +15,7 @@ function isSuccessResult(result: RunResult): result is SuccessResult {
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [consented, setConsented] = useState(false);
   const [run, setRun] = useState<PlannedRunSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -22,11 +23,14 @@ export default function Home() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const [humanValue, setHumanValue] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+  const cancelledRunId = useRef<string | null>(null);
 
   async function startRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setRun(null);
+    cancelledRunId.current = null;
     setIsStarting(true);
 
     try {
@@ -81,6 +85,7 @@ export default function Home() {
     if (!run) return;
     setError(null);
     setIsExecuting(true);
+    cancelledRunId.current = null;
 
     try {
       const response = await fetch(`/api/runs/${run.id}/execute`, {
@@ -93,7 +98,9 @@ export default function Home() {
         setError("error" in body ? body.error.message : "Browser execution could not start.");
         return;
       }
-      setRun((body as { run: PlannedRunSnapshot }).run);
+      if (cancelledRunId.current !== run.id) {
+        setRun((body as { run: PlannedRunSnapshot }).run);
+      }
     } catch {
       setError("GoFetch could not reach the browser runtime. Please try again.");
     } finally {
@@ -105,6 +112,7 @@ export default function Home() {
     if (!run?.browser) return;
     setError(null);
     setIsResuming(true);
+    cancelledRunId.current = null;
 
     try {
       const response = await fetch(`/api/runs/${run.id}/resume`, {
@@ -123,7 +131,9 @@ export default function Home() {
         return;
       }
       setHumanValue("");
-      setRun((body as { run: PlannedRunSnapshot }).run);
+      if (cancelledRunId.current !== run.id) {
+        setRun((body as { run: PlannedRunSnapshot }).run);
+      }
     } catch {
       setError("GoFetch could not resume the browser agent. Please try again.");
     } finally {
@@ -140,6 +150,32 @@ export default function Home() {
       return;
     }
     await navigator.clipboard.writeText(run.result.credential);
+  }
+
+  async function cancelBrowser() {
+    if (!run) return;
+    setError(null);
+    setIsCancelling(true);
+    cancelledRunId.current = run.id;
+    try {
+      const response = await fetch(`/api/runs/${run.id}/cancel`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as PlannedRunSnapshot | {
+        error: { message: string };
+      };
+      if (!response.ok) {
+        cancelledRunId.current = null;
+        setError("error" in body ? body.error.message : "Cancellation failed.");
+        return;
+      }
+      setRun(body as PlannedRunSnapshot);
+    } catch {
+      cancelledRunId.current = null;
+      setError("GoFetch could not cancel the browser run.");
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   const credentialResult =
@@ -169,10 +205,22 @@ export default function Home() {
               autoComplete="off"
               disabled={isStarting}
             />
-            <button type="submit" disabled={isStarting}>
+            <button type="submit" disabled={isStarting || !consented}>
               {isStarting ? "Starting…" : "Start run"}
             </button>
           </div>
+          <label className="consent">
+            <input
+              type="checkbox"
+              checked={consented}
+              onChange={(event) => setConsented(event.target.checked)}
+            />
+            <span>
+              I authorize GoFetch to research and operate a remote browser. I may enter my own
+              signup details; GoFetch stores them only for the active run, while Browserbase may
+              retain session data under its policy. I will not enter payment details.
+            </span>
+          </label>
         </form>
 
         {error ? (
@@ -188,6 +236,13 @@ export default function Home() {
               <p className="status-label">Run created</p>
               <p>{run.query}</p>
               <p className="status-meta">State: {run.state}</p>
+              <ol className="progress-feed" aria-label="Run progress">
+                <li>Input accepted</li>
+                {run.plan ? <li>Official credential path researched</li> : null}
+                {run.targetConfirmedAt ? <li>Discovered target confirmed</li> : null}
+                {run.state === "awaiting_human" ? <li>Agent paused for human action</li> : null}
+                {run.result ? <li>Run completed: {run.result.status}</li> : null}
+              </ol>
               {run.plan ? (
                 <div className="plan">
                   <p className="plan-target">
@@ -226,7 +281,7 @@ export default function Home() {
                       onClick={executeBrowser}
                       disabled={isExecuting}
                     >
-                      {isExecuting ? "Agent workingâ€¦" : "Start browser work"}
+                      {isExecuting ? "Agent working…" : "Start browser work"}
                     </button>
                   ) : null}
                   <ul className="source-list" aria-label="Official sources">
@@ -252,7 +307,7 @@ export default function Home() {
                           sandbox="allow-same-origin allow-scripts"
                           allow="clipboard-read; clipboard-write"
                         />
-                        {isResuming ? <div className="control-overlay">Agent has controlâ€¦</div> : null}
+                        {isResuming ? <div className="control-overlay">Agent has control…</div> : null}
                       </div>
                       {[
                         "identity_value",
@@ -276,7 +331,7 @@ export default function Home() {
                         onClick={handBackControl}
                         disabled={isResuming}
                       >
-                        {isResuming ? "Resuming agentâ€¦" : "Done â€” hand control back"}
+                        {isResuming ? "Resuming agent…" : "Done — hand control back"}
                       </button>
                     </section>
                   ) : null}
@@ -285,7 +340,7 @@ export default function Home() {
                       <p className="plan-target">
                         {credentialResult.status === "validated_success"
                           ? "Credential validated"
-                          : "Credential obtained â€” not validated"}
+                          : "Credential obtained — not validated"}
                       </p>
                       <label>
                         {credentialResult.credentialType.replaceAll("_", " ")}
@@ -312,6 +367,17 @@ export default function Home() {
                       <p>{failureResult.reason}</p>
                       {failureResult.nextAction ? <p>{failureResult.nextAction}</p> : null}
                     </section>
+                  ) : null}
+                  {(isExecuting || isResuming || run.state === "awaiting_human") &&
+                  !run.result ? (
+                    <button
+                      className="cancel-button"
+                      type="button"
+                      onClick={cancelBrowser}
+                      disabled={isCancelling}
+                    >
+                      {isCancelling ? "Cancelling…" : "Cancel run"}
+                    </button>
                   ) : null}
                 </div>
               ) : null}

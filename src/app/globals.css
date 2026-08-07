@@ -89,6 +89,21 @@ h1 {
   font-weight: 700;
 }
 
+.run-form .consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.consent input {
+  margin-top: 3px;
+}
+
 .input-row {
   display: flex;
   gap: 10px;
@@ -167,6 +182,14 @@ h1 {
   font-size: 0.86rem;
 }
 
+.progress-feed {
+  margin: 10px 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
 .plan {
   display: grid;
   gap: 8px;
@@ -204,6 +227,17 @@ h1 {
 .secondary-button:disabled {
   cursor: wait;
   opacity: 0.65;
+}
+
+.cancel-button {
+  width: fit-content;
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--danger);
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .source-list {
