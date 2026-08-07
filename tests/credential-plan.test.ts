@@ -3,6 +3,65 @@ import { describe, expect, it } from "vitest";
 import { buildCredentialPlan } from "../src/research/build-credential-plan";
 
 describe("buildCredentialPlan", () => {
+  it("captures an officially documented public demo credential without a browser", async () => {
+    const plan = await buildCredentialPlan("Example public API", {
+      research: {
+        async search() {
+          return [
+            {
+              title: "Example API authentication",
+              url: "https://developers.example.test/demo-key",
+            },
+          ];
+        },
+        async fetch(url) {
+          return {
+            url,
+            content: "Use the public demo key DEMO-123 for read-only examples.",
+          };
+        },
+      },
+      planner: {
+        async resolveTarget() {
+          return {
+            inputMode: "direct" as const,
+            appName: "Example API",
+            selectionReason: "The user named it.",
+            clarificationQuestion: null,
+            requiresConfirmation: false,
+            officialSourceUrls: [
+              "https://developers.example.test/demo-key",
+            ],
+          };
+        },
+        async classifyPath() {
+          return {
+            path: "public_credential" as const,
+            credentialTypes: ["public_demo_key" as const],
+            summary: "The official docs publish a read-only demo key.",
+            signupUrl: null,
+            blocker: null,
+            publicCredential: {
+              credentialType: "public_demo_key" as const,
+              credential: "DEMO-123",
+              sourceUrl: "https://developers.example.test/demo-key",
+              usageNote: "Use only for documented read-only examples.",
+              limitations: "Not intended for production data.",
+            },
+          };
+        },
+      },
+    });
+
+    expect(plan).toMatchObject({
+      path: "public_credential",
+      publicCredential: {
+        credential: "DEMO-123",
+        credentialType: "public_demo_key",
+      },
+    });
+  });
+
   it("builds an evidence-backed signup plan for a directly named app", async () => {
     const plan = await buildCredentialPlan("Lantern CRM", {
       research: {

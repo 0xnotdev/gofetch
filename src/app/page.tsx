@@ -2,9 +2,16 @@
 
 import { FormEvent, useState } from "react";
 
-import type { PlannedRunSnapshot } from "@/domain/run";
+import type { PlannedRunSnapshot, RunResult, SuccessResult } from "@/domain/run";
 
 const EXAMPLE_QUERY = "A project-management app with a free API";
+
+function isSuccessResult(result: RunResult): result is SuccessResult {
+  return (
+    result.status === "validated_success" ||
+    result.status === "obtained_unverified"
+  );
+}
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -123,6 +130,22 @@ export default function Home() {
       setIsResuming(false);
     }
   }
+
+  async function copyCredential() {
+    if (
+      !run?.result ||
+      (run.result.status !== "validated_success" &&
+        run.result.status !== "obtained_unverified")
+    ) {
+      return;
+    }
+    await navigator.clipboard.writeText(run.result.credential);
+  }
+
+  const credentialResult =
+    run?.result && isSuccessResult(run.result) ? run.result : null;
+  const failureResult =
+    run?.result && !isSuccessResult(run.result) ? run.result : null;
 
   return (
     <main className="shell">
@@ -255,6 +278,39 @@ export default function Home() {
                       >
                         {isResuming ? "Resuming agentâ€¦" : "Done â€” hand control back"}
                       </button>
+                    </section>
+                  ) : null}
+                  {credentialResult ? (
+                    <section className="credential-result" aria-label="Credential result">
+                      <p className="plan-target">
+                        {credentialResult.status === "validated_success"
+                          ? "Credential validated"
+                          : "Credential obtained â€” not validated"}
+                      </p>
+                      <label>
+                        {credentialResult.credentialType.replaceAll("_", " ")}
+                        <input
+                          className="credential-value"
+                          readOnly
+                          value={credentialResult.credential}
+                          aria-label="Credential value"
+                        />
+                      </label>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={copyCredential}
+                      >
+                        Copy credential
+                      </button>
+                      <p>{credentialResult.usageNote}</p>
+                      <p className="status-meta">{credentialResult.validationNote}</p>
+                    </section>
+                  ) : failureResult ? (
+                    <section className="failure-result" aria-label="Run result">
+                      <p className="plan-target">Run ended: {failureResult.status}</p>
+                      <p>{failureResult.reason}</p>
+                      {failureResult.nextAction ? <p>{failureResult.nextAction}</p> : null}
                     </section>
                   ) : null}
                 </div>

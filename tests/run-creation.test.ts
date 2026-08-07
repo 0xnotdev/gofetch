@@ -93,6 +93,49 @@ describe("POST /api/runs", () => {
     });
   });
 
+  it("returns an official public demo credential without opening a browser", async () => {
+    const handler = createPostRunsHandler({
+      buildPlan: async () => ({
+        inputMode: "direct",
+        appName: "Example API",
+        selectionReason: "The user named it.",
+        clarificationQuestion: null,
+        requiresConfirmation: false,
+        path: "public_credential",
+        credentialTypes: ["public_demo_key"],
+        summary: "The official docs publish a demo key.",
+        signupUrl: null,
+        blocker: null,
+        officialSources: ["https://developers.example.test/demo-key"],
+        publicCredential: {
+          credentialType: "public_demo_key",
+          credential: "DEMO-123",
+          sourceUrl: "https://developers.example.test/demo-key",
+          usageNote: "Use only for documented examples.",
+          limitations: "Not intended for production data.",
+        },
+      }),
+    });
+
+    const response = await handler(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "Example API" }),
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      state: "obtained_unverified",
+      result: {
+        status: "obtained_unverified",
+        credentialType: "public_demo_key",
+        credential: "DEMO-123",
+      },
+    });
+  });
+
   it("reports research infrastructure failures without leaking provider details", async () => {
     const handler = createPostRunsHandler({
       buildPlan: async () => {

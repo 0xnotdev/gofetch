@@ -3,8 +3,9 @@ import type {
   HumanHandback,
 } from "@/browser/browser-run-coordinator";
 import { resumeConfiguredBrowserRun } from "@/browser/runtime";
-import type { PlannedRunSnapshot, RunState } from "@/domain/run";
+import type { PlannedRunSnapshot } from "@/domain/run";
 import { findRun, saveRun } from "@/run/run-store";
+import { stateForBrowserResult, toRunResult } from "@/run/browser-result";
 import { z } from "zod";
 
 const handbackSchema = z.object({
@@ -73,7 +74,7 @@ export function createResumeBrowserHandler(
     );
     const updatedRun: PlannedRunSnapshot = {
       ...run,
-      state: stateFor(execution),
+      state: stateForBrowserResult(execution),
       browser:
         execution.status === "awaiting_human"
           ? {
@@ -83,28 +84,12 @@ export function createResumeBrowserHandler(
               intervention: execution.intervention,
             }
           : undefined,
+      result: toRunResult(execution),
     };
     dependencies.saveRun(updatedRun);
 
     return Response.json({ run: updatedRun, execution });
   };
-}
-
-function stateFor(result: BrowserRunResult): RunState {
-  switch (result.status) {
-    case "awaiting_human":
-      return "awaiting_human";
-    case "blocked":
-      return "blocked";
-    case "cancelled":
-      return "cancelled";
-    case "timed_out":
-      return "timed_out";
-    case "technical_failure":
-      return "technical_failure";
-    case "completed":
-      return "browsing";
-  }
 }
 
 export const POST = createResumeBrowserHandler({

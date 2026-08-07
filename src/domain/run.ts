@@ -36,6 +36,7 @@ export interface PlannedRunSnapshot extends RunSnapshot {
   plan?: CredentialPlan;
   targetConfirmedAt?: string;
   browser?: BrowserSessionSnapshot;
+  result?: RunResult;
 }
 
 export interface ProgressEvent {

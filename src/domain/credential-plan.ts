@@ -21,6 +21,15 @@ export interface PathClassification {
   summary: string;
   signupUrl: string | null;
   blocker: string | null;
+  publicCredential?: PublicCredentialEvidence | null;
+}
+
+export interface PublicCredentialEvidence {
+  credentialType: CredentialType;
+  credential: string;
+  sourceUrl: string;
+  usageNote: string;
+  limitations: string;
 }
 
 export interface CredentialPlan extends Omit<ResolvedTarget, "officialSourceUrls">,

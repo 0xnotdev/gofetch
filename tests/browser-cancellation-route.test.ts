@@ -24,7 +24,14 @@ describe("POST /api/runs/:id/cancel", () => {
 
     expect(cancelRun).toHaveBeenCalledOnce();
     expect(saveRun).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "run-1", state: "cancelled" }),
+      expect.objectContaining({
+        id: "run-1",
+        state: "cancelled",
+        result: expect.objectContaining({
+          status: "cancelled",
+          stage: "browsing",
+        }),
+      }),
     );
     expect(response.status).toBe(200);
   });

@@ -97,6 +97,36 @@ export async function buildCredentialPlan(
     documents,
   });
 
+  if (classification.path === "public_credential") {
+    const publicCredential = classification.publicCredential;
+    const hasVerbatimOfficialEvidence =
+      publicCredential &&
+      classification.credentialTypes.includes(publicCredential.credentialType) &&
+      documents.some(
+        (document) =>
+          document.url === publicCredential.sourceUrl &&
+          document.content.includes(publicCredential.credential),
+      );
+
+    if (!hasVerbatimOfficialEvidence) {
+      return {
+        inputMode: target.inputMode,
+        appName: target.appName,
+        selectionReason: target.selectionReason,
+        clarificationQuestion: target.clarificationQuestion,
+        requiresConfirmation: target.inputMode === "discovery",
+        path: "insufficient_evidence",
+        credentialTypes: [],
+        summary:
+          "The public credential could not be verified verbatim in an official source.",
+        signupUrl: null,
+        blocker: "No verified public credential was found.",
+        publicCredential: null,
+        officialSources,
+      };
+    }
+  }
+
   return {
     inputMode: target.inputMode,
     appName: target.appName,

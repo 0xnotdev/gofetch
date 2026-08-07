@@ -123,4 +123,41 @@ describe("POST /api/runs/:id/execute", () => {
       }),
     );
   });
+
+  it("records an extracted credential as a terminal structured result", async () => {
+    const saveRun = vi.fn();
+    const handler = createExecuteBrowserHandler({
+      findRun: () => plannedRun,
+      saveRun,
+      executePlan: vi.fn().mockResolvedValue({
+        status: "obtained_unverified",
+        sessionId: "session-123",
+        currentUrl: "https://developers.example.test/settings/keys",
+        appName: "Example Service",
+        credentialType: "api_key",
+        credential: "secret-example-1234",
+        sourceUrl: "https://developers.example.test/settings/keys",
+        usageNote: "Use the documented Authorization header.",
+        validationNote: "No harmless official validation was available.",
+      }),
+    });
+
+    const response = await handler(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "run-1" }),
+    });
+
+    const body = await response.json();
+    expect(body.run).toMatchObject({
+      state: "obtained_unverified",
+      result: {
+        status: "obtained_unverified",
+        credential: "secret-example-1234",
+      },
+    });
+    expect(body.run).not.toHaveProperty("browser");
+    expect(body.run.result).not.toHaveProperty("sessionId");
+    expect(saveRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({ state: "obtained_unverified" }),
+    );
+  });
 });

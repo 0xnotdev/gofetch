@@ -1,5 +1,6 @@
 import { runRequestSchema, type PlannedRunSnapshot } from "@/domain/run";
 import type { CredentialPlan } from "@/domain/credential-plan";
+import { createCredentialResult } from "@/credential/credential-result";
 import { buildConfiguredCredentialPlan } from "@/research/runtime";
 import { saveRun } from "@/run/run-store";
 
@@ -61,13 +62,37 @@ export function createPostRunsHandler(dependencies: PostRunsDependencies = {}) {
       }
 
       run.plan = plan;
-      run.state = plan.requiresConfirmation
-        ? "awaiting_target_confirmation"
-        : plan.path === "blocked"
-          ? "blocked"
-          : plan.path === "insufficient_evidence"
-            ? "needs_clarification"
-            : "planning";
+      if (plan.path === "public_credential" && plan.publicCredential) {
+        run.result = createCredentialResult(plan, {
+          ...plan.publicCredential,
+          validationStatus: "not_validated",
+          validationNote: plan.publicCredential.limitations,
+        });
+        run.state = "obtained_unverified";
+      } else if (plan.path === "blocked") {
+        run.state = "blocked";
+        run.result = {
+          status: "blocked",
+          reason: plan.blocker ?? plan.summary,
+          stage: "planning",
+          evidence: plan.officialSources,
+        };
+      } else if (plan.path === "insufficient_evidence") {
+        run.state = "needs_clarification";
+        run.result = {
+          status: "needs_clarification",
+          reason: plan.blocker ?? plan.summary,
+          stage: "planning",
+          evidence: plan.officialSources,
+          ...(plan.clarificationQuestion
+            ? { nextAction: plan.clarificationQuestion }
+            : {}),
+        };
+      } else {
+        run.state = plan.requiresConfirmation
+          ? "awaiting_target_confirmation"
+          : "planning";
+      }
     }
 
     dependencies.saveRun?.(run);

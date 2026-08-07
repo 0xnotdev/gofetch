@@ -1,7 +1,8 @@
 import type { BrowserRunResult } from "@/browser/browser-run-coordinator";
 import { executeConfiguredBrowserPlan } from "@/browser/runtime";
 import type { CredentialPlan } from "@/domain/credential-plan";
-import type { PlannedRunSnapshot, RunState } from "@/domain/run";
+import type { PlannedRunSnapshot } from "@/domain/run";
+import { stateForBrowserResult, toRunResult } from "@/run/browser-result";
 import { findRun, saveRun } from "@/run/run-store";
 
 interface ExecuteBrowserDependencies {
@@ -62,7 +63,7 @@ export function createExecuteBrowserHandler(
 
     const finishedRun: PlannedRunSnapshot = {
       ...browsingRun,
-      state: stateFor(execution),
+      state: stateForBrowserResult(execution),
       browser:
         execution.status === "awaiting_human"
           ? {
@@ -72,28 +73,12 @@ export function createExecuteBrowserHandler(
               intervention: execution.intervention,
             }
           : undefined,
+      result: toRunResult(execution),
     };
     dependencies.saveRun(finishedRun);
 
     return Response.json({ run: finishedRun, execution });
   };
-}
-
-function stateFor(result: BrowserRunResult): RunState {
-  switch (result.status) {
-    case "blocked":
-      return "blocked";
-    case "cancelled":
-      return "cancelled";
-    case "timed_out":
-      return "timed_out";
-    case "technical_failure":
-      return "technical_failure";
-    case "awaiting_human":
-      return "awaiting_human";
-    case "completed":
-      return "browsing";
-  }
 }
 
 export const POST = createExecuteBrowserHandler({

@@ -1,5 +1,12 @@
 import type { CredentialPlan } from "../domain/credential-plan";
-import type { HumanInterventionRequest } from "../domain/run";
+import type {
+  HumanInterventionRequest,
+  SuccessResult,
+} from "../domain/run";
+import {
+  createCredentialResult,
+  type CredentialEvidence,
+} from "../credential/credential-result";
 
 export interface BrowserActionRequest {
   appName: string;
@@ -20,6 +27,7 @@ export interface PrivateBrowserInput {
 
 export type BrowserObservationKind =
   | "completed"
+  | "credential_obtained"
   | "human_required"
   | "payment_required"
   | "blocked";
@@ -29,6 +37,7 @@ export interface BrowserObservation {
   summary: string;
   currentUrl: string;
   intervention?: Omit<HumanInterventionRequest, "id">;
+  credential?: CredentialEvidence;
 }
 
 export interface BrowserSession {
@@ -49,6 +58,10 @@ export interface BrowserSessionFactory {
 }
 
 export type BrowserRunResult =
+  | (SuccessResult & {
+      sessionId: string;
+      currentUrl: string;
+    })
   | {
       status: "completed";
       sessionId: string;
@@ -87,6 +100,7 @@ export interface BrowserRunCoordinatorOptions {
 }
 
 interface ActiveBrowserRun {
+  plan: CredentialPlan;
   controller: AbortController;
   request: BrowserActionRequest;
   session?: BrowserSession;
@@ -212,6 +226,7 @@ export class BrowserRunCoordinator {
     };
     const active = {} as ActiveBrowserRun;
     active.controller = controller;
+    active.plan = plan;
     active.request = request;
     active.phase = "starting";
     active.timeout = setTimeout(() => {
@@ -278,6 +293,33 @@ export class BrowserRunCoordinator {
         liveViewUrl: session.liveViewUrl,
         currentUrl: observation.currentUrl,
         intervention,
+      };
+    }
+
+    if (observation.kind === "credential_obtained") {
+      let credentialResult: SuccessResult;
+      try {
+        if (!observation.credential) {
+          throw new Error("Credential evidence is missing.");
+        }
+        credentialResult = createCredentialResult(
+          active.plan,
+          observation.credential,
+        );
+      } catch {
+        await this.#finish(active);
+        return {
+          status: "technical_failure",
+          reason:
+            "The browser returned credential data that failed safety validation.",
+        };
+      }
+
+      await this.#finish(active);
+      return {
+        ...credentialResult,
+        sessionId: session.id,
+        currentUrl: observation.currentUrl,
       };
     }
 

@@ -48,6 +48,12 @@ export function createCancelBrowserHandler(
       ...run,
       state: "cancelled",
       browser: undefined,
+      result: {
+        status: "cancelled",
+        reason: "The browser run was cancelled by the user.",
+        stage: run.state,
+        evidence: run.browser ? [run.browser.currentUrl] : [],
+      },
     };
     dependencies.saveRun(cancelledRun);
     return Response.json(cancelledRun);

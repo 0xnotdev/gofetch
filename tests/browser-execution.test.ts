@@ -108,6 +108,35 @@ describe("BrowserRunCoordinator", () => {
     expect(session.close).toHaveBeenCalledOnce();
   });
 
+  it("returns a validated credential result and closes the session", async () => {
+    const { factory, session } = createBrowserFake();
+    vi.mocked(session.execute).mockResolvedValue({
+      kind: "credential_obtained",
+      summary: "Created and validated an API key.",
+      currentUrl: "https://developers.example.test/settings/keys",
+      credential: {
+        credentialType: "api_key",
+        credential: "secret-example-1234",
+        sourceUrl: "https://developers.example.test/settings/keys",
+        usageNote: "Send it as a bearer token.",
+        validationStatus: "validated",
+        validationNote: "An official read-only identity endpoint accepted it.",
+      },
+    });
+    const coordinator = new BrowserRunCoordinator({ factory });
+
+    const result = await coordinator.run(signupPlan);
+
+    expect(result).toMatchObject({
+      status: "validated_success",
+      appName: "Example Service",
+      credentialType: "api_key",
+      credential: "secret-example-1234",
+      sessionId: "session-123",
+    });
+    expect(session.close).toHaveBeenCalledOnce();
+  });
+
   it("pauses for a human and resumes the same live session after handback", async () => {
     const { factory, session } = createBrowserFake();
     vi.mocked(session.execute)

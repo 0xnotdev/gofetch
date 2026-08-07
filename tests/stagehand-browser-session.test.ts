@@ -66,6 +66,33 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         description: "The user's private one-time code",
       },
     );
+    execute.mockResolvedValueOnce({
+      success: true,
+      completed: true,
+      message: "Credential obtained.",
+      actions: [],
+      output: {
+        kind: "credential_obtained",
+        summary: "Credential obtained without exposing its value.",
+        credential: {
+          credentialType: "api_key",
+          credential: "secret-example-1234",
+          sourceUrl: "https://accounts.example.test/settings/keys",
+          usageNote: "Use the documented Authorization header.",
+          validationStatus: "not_validated",
+          validationNote: "No harmless official check was available.",
+        },
+      },
+    });
+    const credentialObservation = await session.execute(
+      {
+        appName: "Any Service",
+        planSummary: "Find the API key.",
+        credentialTypes: ["api_key"],
+        officialSources: ["https://accounts.example.test/docs"],
+      },
+      signal,
+    );
     await session.close();
 
     expect(receivedOptions).toMatchObject({
@@ -117,6 +144,14 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       kind: "payment_required",
       summary: "Payment is required.",
       currentUrl: "https://accounts.example.test/billing",
+    });
+    expect(credentialObservation).toMatchObject({
+      kind: "credential_obtained",
+      summary: "Credential obtained without exposing its value.",
+      credential: {
+        credential: "secret-example-1234",
+        validationStatus: "not_validated",
+      },
     });
     expect(stagehand.close).toHaveBeenCalledWith({ force: true });
   });

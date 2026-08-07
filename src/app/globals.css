@@ -277,6 +277,35 @@ h1 {
   background: rgba(0, 0, 0, 0.32);
 }
 
+.credential-result,
+.failure-result {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.credential-result label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.credential-value {
+  width: 100%;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.4);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-transform: none;
+}
+
 .expectations ol {
   margin: 24px 0;
   padding-left: 1.25rem;
