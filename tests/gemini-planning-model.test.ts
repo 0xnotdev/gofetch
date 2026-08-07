@@ -188,4 +188,50 @@ describe("GeminiPlanningModel", () => {
       },
     });
   });
+
+  it("normalizes a loose public credential object after provider extraction", async () => {
+    const sourceUrl = "https://developers.example.test/demo";
+    const planner = new GeminiPlanningModel({
+      generate: async ({ schema }) =>
+        schema.parse({
+          path: "A public demo key is documented for evaluation.",
+          credentialTypes: ["API key"],
+          summary: "The official docs publish a limited demo key.",
+          signupUrl: null,
+          blocker: null,
+          publicCredential: {
+            credentialType: "DEMO_KEY api key",
+            credential: "DEMO_KEY",
+            sourceUrl,
+            usageNote: "Use the demo key for evaluation.",
+            limitations: "Lower rate limits apply.",
+          },
+        }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "Example Open API",
+        target: {
+          inputMode: "direct",
+          appName: "Example Open API",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [{ url: sourceUrl, content: "Try requests with DEMO_KEY." }],
+      }),
+    ).resolves.toMatchObject({
+      path: "public_credential",
+      credentialTypes: ["api_key", "public_demo_key"],
+      publicCredential: {
+        credentialType: "public_demo_key",
+        credential: "DEMO_KEY",
+        sourceUrl,
+        usageNote: "Use the demo key for evaluation.",
+        limitations: "Lower rate limits apply.",
+      },
+    });
+  });
 });

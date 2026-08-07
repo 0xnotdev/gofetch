@@ -133,13 +133,22 @@ function normalizeDocumentedPublicCredential(
   }
 
   const raw = value as Record<string, unknown>;
-  if (typeof raw.publicCredential !== "string" || !raw.publicCredential) {
+  const publicCredential = raw.publicCredential;
+  const publicCredentialObject =
+    publicCredential &&
+    typeof publicCredential === "object" &&
+    !Array.isArray(publicCredential)
+      ? (publicCredential as Record<string, unknown>)
+      : null;
+  const credential =
+    typeof publicCredential === "string"
+      ? publicCredential
+      : publicCredentialObject?.credential;
+  if (typeof credential !== "string" || !credential) {
     return value;
   }
 
-  const source = documents.find((document) =>
-    document.content.includes(raw.publicCredential as string),
-  );
+  const source = documents.find((document) => document.content.includes(credential));
   if (!source) {
     return value;
   }
@@ -163,14 +172,20 @@ function normalizeDocumentedPublicCredential(
     blocker: null,
     publicCredential: {
       credentialType,
-      credential: raw.publicCredential,
+      credential,
       sourceUrl: source.url,
       usageNote:
-        typeof raw.summary === "string" && raw.summary.trim()
+        typeof publicCredentialObject?.usageNote === "string" &&
+        publicCredentialObject.usageNote.trim()
+          ? publicCredentialObject.usageNote
+          : typeof raw.summary === "string" && raw.summary.trim()
           ? raw.summary
           : "Use only according to the official documentation.",
       limitations:
-        typeof raw.blocker === "string" && raw.blocker.trim()
+        typeof publicCredentialObject?.limitations === "string" &&
+        publicCredentialObject.limitations.trim()
+          ? publicCredentialObject.limitations
+          : typeof raw.blocker === "string" && raw.blocker.trim()
           ? raw.blocker
           : "Use only within the documented limits.",
     },
