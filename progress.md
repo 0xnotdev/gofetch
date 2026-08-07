@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 71%
+**Implementation progress:** 86%
 
-**Completed implementation checkpoints:** 5 of 7
+**Completed implementation checkpoints:** 6 of 7
 
-**Current checkpoint:** Checkpoint 6 — Complete reviewer experience
+**Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoints 1–5 complete and pushed; Checkpoint 6 is ready to begin.
+**Current status:** Checkpoints 1–6 complete and pushed; Checkpoint 7 is ready to begin.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -172,22 +172,42 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm audit --audit-level=high` — passed; the previously documented 17 low-severity Stagehand transitive findings remain.
 - Tracked-secret scan and `git diff --check` — passed.
 
-## Active checkpoint
-
 ### Checkpoint 6 — Complete reviewer experience
 
-**Status:** in progress
+**Status:** complete
 
-**Delivered so far:**
+**Implementation commit:** `7ca2a04`
+
+**Delivered:**
 
 - Mandatory pre-run authorization and Browserbase-retention disclosure.
 - Reviewer-readable progress milestones, terminal credential/failure panels, and corrected UI text.
 - Cancel control during agent work, Live View takeover, and handback, with stale async responses prevented from overwriting cancellation.
-- Public-seam journey coverage for direct input → HITL → validated same-session success and redacted browser-infrastructure failure.
+- Public-seam journey coverage for direct input, discovery confirmation, no-browser public credentials, no-human browser success, HITL same-session success, blockers, cancellation, timeout, and redacted infrastructure failure.
+- Browserbase Model Gateway planning fallback requiring only the Browserbase key, with an optional direct-Gemini override.
+- Exact searched-source allowlisting for model-returned URLs and one short, non-recorded planning session with force-close cleanup.
+- Documented `google/gemini-2.5-flash` default and a quota-conscious Model Gateway connectivity command.
 
-**Interim verification:** targeted journey tests, typecheck, lint, production build, and `git diff --check` pass.
+**Verification evidence:**
 
-**Next action:** complete discovery-confirmation, public-key, blocker, cancellation, and timeout journey fixtures; then run the entire clean suite and browser-level reviewer smoke test.
+- `npm test` — passed; 56 tests across 13 files.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; all UI and API routes built successfully.
+- `npm audit --audit-level=high` — passed; the previously documented 17 low-severity Stagehand transitive findings remain.
+- Tracked-secret scan and `git diff --check` — passed.
+- In-app browser smoke verified the consent gate, arbitrary requirements input, enabled submission, and redacted error presentation.
+- `npm run check:model-gateway` — passed with structured `{ ready: true, provider: "Browserbase" }` output.
+- A live `GitHub` API request returned HTTP 201 with a generic signup plan and three exact official GitHub documentation sources.
+- Browserbase session `18f3e70c-8828-45a7-b634-313ac9344540` completed after the live two-stage planning request.
+
+## Active checkpoint
+
+### Checkpoint 7 — Deployment and submission
+
+**Status:** ready to begin
+
+**Next action:** deploy the application, configure production secrets and limits, run hosted acceptance checks, finish architecture/submission documentation, and audit every scope acceptance criterion.
 
 ## Build log
 
@@ -201,3 +221,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 4 automated implementation pushed; progress remains 43% pending manual handoff | `2060bbb`, 37 tests and full local verification passed |
 | 2026-08-08 | Checkpoint 4 complete; implementation at 57% | `db2192e`, live human takeover and unchanged-session resume verified |
 | 2026-08-08 | Checkpoint 5 complete; implementation at 71% | `e5147a0`, 45 tests and full verification passed |
+| 2026-08-08 | Checkpoint 6 complete; implementation at 86% | `7ca2a04`, 56 tests, live Model Gateway planning, API plan, and browser smoke passed |
