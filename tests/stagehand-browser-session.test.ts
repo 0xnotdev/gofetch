@@ -30,7 +30,6 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       init: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
       context: {
-        setDomainPolicy: vi.fn().mockResolvedValue(undefined),
         pages: vi.fn().mockReturnValue([page]),
       },
       agent: vi.fn().mockReturnValue({ execute }),
@@ -102,6 +101,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       waitForCaptchaSolves: false,
       logInferenceToFile: false,
       verbose: 0,
+      experimental: true,
       browserbaseSessionCreateParams: {
         keepAlive: false,
         timeout: 720,
@@ -116,9 +116,6 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(receivedOptions?.browserbaseSessionCreateParams).not.toHaveProperty(
       "projectId",
     );
-    expect(stagehand.context.setDomainPolicy).toHaveBeenCalledWith({
-      allowedDomains: ["accounts.example.test"],
-    });
     expect(page.goto).toHaveBeenCalledWith(
       "https://accounts.example.test/register",
       { waitUntil: "domcontentloaded", timeoutMs: 45_000 },
@@ -129,9 +126,12 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         maxSteps: 12,
         signal,
         useSearch: false,
-        excludeTools: ["search"],
+        excludeTools: ["search", "goto", "navback"],
         instruction: expect.stringContaining("Any Service"),
         output: expect.anything(),
+        callbacks: {
+          onStepFinish: expect.any(Function),
+        },
         variables: {
           humanInput: {
             value: "123456",
@@ -181,5 +181,42 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       "connection failed",
     );
     expect(stagehand.close).toHaveBeenCalledWith({ force: true });
+  });
+
+  it("enforces allowed navigation without a provider context policy hook", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.example.test/register"),
+    };
+    const stagehand = {
+      browserbaseSessionID: "bb-session-current-context",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-session-current-context",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: {
+        pages: vi.fn().mockReturnValue([page]),
+      },
+      agent: vi.fn(),
+    } as unknown as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const signal = new AbortController().signal;
+
+    const session = await factory.create(signal);
+    await session.setAllowedDomains(["accounts.example.test"]);
+    await expect(
+      session.navigate("https://accounts.example.test/register", signal),
+    ).resolves.toBeUndefined();
+    await expect(
+      session.navigate("https://evil.example.test/register", signal),
+    ).rejects.toThrow("outside the verified domain policy");
   });
 });

@@ -62,6 +62,7 @@ export interface StagehandAdapterOptions {
   logInferenceToFile: false;
   verbose: 0;
   serverCache: true;
+  experimental: true;
   browserbaseSessionCreateParams: {
     keepAlive: false;
     timeout: number;
@@ -95,7 +96,6 @@ export interface StagehandAdapter {
   init(): Promise<void>;
   close(options: { force: boolean }): Promise<void>;
   context: {
-    setDomainPolicy(policy: { allowedDomains: string[] }): Promise<void>;
     pages(): StagehandPageAdapter[];
   };
   agent(options: { mode: "dom" }): {
@@ -104,9 +104,12 @@ export interface StagehandAdapter {
       maxSteps: number;
       signal: AbortSignal;
       useSearch: false;
-      excludeTools: ["search"];
+      excludeTools: ["search", "goto", "navback"];
       output: typeof browserObservationSchema;
       toolTimeout: number;
+      callbacks: {
+        onStepFinish: () => Promise<void>;
+      };
       variables?: {
         humanInput: { value: string; description: string };
       };
@@ -147,6 +150,7 @@ export class BrowserbaseStagehandSessionFactory
       logInferenceToFile: false,
       verbose: 0,
       serverCache: true,
+      experimental: true,
       browserbaseSessionCreateParams: {
         keepAlive: false,
         timeout: 720,
@@ -184,6 +188,7 @@ class StagehandBrowserSession implements BrowserSession {
   readonly id: string;
   readonly liveViewUrl: string;
   readonly #stagehand: StagehandAdapter;
+  #allowedDomains = new Set<string>();
 
   constructor(
     stagehand: StagehandAdapter,
@@ -196,17 +201,19 @@ class StagehandBrowserSession implements BrowserSession {
   }
 
   async setAllowedDomains(domains: string[]): Promise<void> {
-    await this.#stagehand.context.setDomainPolicy({ allowedDomains: domains });
+    this.#allowedDomains = new Set(domains);
   }
 
   async navigate(url: string, signal: AbortSignal): Promise<void> {
     throwIfAborted(signal);
+    this.#assertAllowedUrl(url);
     const page = this.#page();
     await page.goto(url, {
       waitUntil: "domcontentloaded",
       timeoutMs: 45_000,
     });
     throwIfAborted(signal);
+    this.#assertAllowedUrl(page.url());
   }
 
   async execute(
@@ -215,14 +222,20 @@ class StagehandBrowserSession implements BrowserSession {
     privateInput?: PrivateBrowserInput,
   ): Promise<BrowserObservation> {
     const page = this.#page();
+    this.#assertAllowedUrl(page.url());
     const result = await this.#stagehand.agent({ mode: "dom" }).execute({
       instruction: buildInstruction(request),
       maxSteps: 12,
       signal,
       useSearch: false,
-      excludeTools: ["search"],
+      excludeTools: ["search", "goto", "navback"],
       output: browserObservationSchema,
       toolTimeout: 45_000,
+      callbacks: {
+        onStepFinish: async () => {
+          this.#assertAllowedUrl(page.url());
+        },
+      },
       variables: privateInput
         ? {
             humanInput: {
@@ -233,6 +246,7 @@ class StagehandBrowserSession implements BrowserSession {
         : undefined,
     });
     throwIfAborted(signal);
+    this.#assertAllowedUrl(page.url());
 
     const parsed = browserObservationSchema.safeParse(result.output);
     if (!parsed.success) {
@@ -261,6 +275,18 @@ class StagehandBrowserSession implements BrowserSession {
       throw new Error("The Browserbase session has no active page.");
     }
     return page;
+  }
+
+  #assertAllowedUrl(value: string): void {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      !this.#allowedDomains.has(url.hostname)
+    ) {
+      throw new Error("Browser navigation moved outside the verified domain policy.");
+    }
   }
 }
 
