@@ -2,7 +2,7 @@
 
 **Build budget:** 8–10 hours  
 **Deliverable:** one publicly reachable hosted web app  
-**Primary task:** accept an app name (or identifying description) and return a usable API credential, or the exact reason it cannot be obtained.
+**Primary task:** accept either a specific app name or a clear description of the kind of app the user needs, resolve that input to a concrete app, and return a usable API credential—or the exact reason it cannot be obtained.
 
 ## 1. Product decision
 
@@ -14,7 +14,14 @@ The user is never sent away to independently complete a signup and never manuall
 
 ## 2. General-input contract
 
-Every app name or identifying description is a valid input. The agent must dynamically research the supplied app, discover its official developer/API documentation, determine the credential path, and attempt that path. There is no allowlist, hard-coded app routing, or app-specific credential lookup.
+The input supports two modes through the same free-text field:
+
+- **Direct target:** the user names an app, such as “Notion.” The named app becomes the target.
+- **App discovery:** the user gives clear requirements or hints about the kind of app they need, such as “a project-management app with an API and a free plan.” The agent researches suitable current options, selects the strongest match with obtainable API access, and states which concrete app it selected and why.
+
+After resolving the target, the agent must dynamically discover that app's official developer/API documentation, determine the credential path, and attempt it. There is no allowlist, hard-coded app routing, app-name-specific credential lookup, or fixed recommendation table.
+
+If a description is too ambiguous to select responsibly, the agent asks one focused clarification question rather than silently guessing. A clear hint should proceed without unnecessary confirmation.
 
 Different apps have different legitimate outcomes. For every input, the agent must reach one of these explicit results:
 
@@ -25,24 +32,25 @@ Different apps have different legitimate outcomes. For every input, the agent mu
 | Payment, eligibility, unavailable API access, or another genuine blocker occurs | Stop at the observed blocker and state it precisely |
 | Official documentation cannot be located or the path cannot be safely determined within the run limit | Report that exact limitation and the evidence considered |
 
-Named services used during development are test fixtures only. They must not appear in input-routing logic or constrain which app names the agent can handle.
+Named services used during development are test fixtures only. They must not appear in input-routing or recommendation logic, or constrain which apps the agent can handle.
 
 ## 3. Required user experience
 
-1. The user enters an app name or description and starts a run.
+1. The user enters either an app name or clear app requirements and starts a run.
 2. The app shows a concise live status feed: research, selected path, browser actions, pauses, completion, or failure.
-3. The agent consults the input app's official developer/API documentation first and dynamically selects one of these paths:
+3. The agent resolves the input to a concrete target app. For discovery input, it reports the selected app and the evidence-backed reason it fits.
+4. The agent consults the resolved app's official developer/API documentation and dynamically selects one of these paths:
    - No signup needed: obtain and return the usable credential or documented public/demo key and explain its limits.
    - Signup required: create and drive one browser session.
    - Payment/card required: stop immediately with the exact blocking reason.
-4. In a signup flow, the agent performs navigation and mechanical form entry.
-5. When a human-only action occurs, the app pauses agent control and displays:
+5. In a signup flow, the agent performs navigation and mechanical form entry.
+6. When a human-only action occurs, the app pauses agent control and displays:
    - what is needed;
    - why it is needed;
    - whether the human should enter a value in the app or take control of the embedded browser.
-6. The human completes the minimum needed action **inside the app’s embedded live browser view** (for example, a CAPTCHA or web-page OTP form), or supplies a discrete value through the app’s inline prompt.
-7. The agent regains control of the same session and continues until it extracts the credential or reaches a genuine dead end.
-8. The result view displays the credential and minimal use context, or a precise failure reason.
+7. The human completes the minimum needed action **inside the app’s embedded live browser view** (for example, a CAPTCHA or web-page OTP form), or supplies a discrete value through the app’s inline prompt.
+8. The agent regains control of the same session and continues until it extracts the credential or reaches a genuine dead end.
+9. The result view displays the resolved app, credential and minimal use context, or a precise failure reason.
 
 ## 4. Live browser architecture
 
@@ -85,7 +93,7 @@ The application itself stores no credentials or personal information beyond the 
 **Success**
 
 - Credential or documented public/demo key.
-- App name, credential type, source page, and a minimal usage note.
+- Resolved app name, selection reason when discovery was used, credential type, source page, and a minimal usage note.
 - An honest qualifier for limited public/demo credentials (for example, NASA’s `DEMO_KEY` rate limits).
 
 **Failure**
@@ -98,9 +106,12 @@ The application itself stores no credentials or personal information beyond the 
 
 - [ ] Public hosted link, with no app-level login wall.
 - [ ] Free-text app input and live run status are functional.
+- [ ] A direct app-name input targets the named app.
+- [ ] A clear requirements/hints input dynamically selects a suitable concrete app, explains the choice, and continues through the same credential workflow.
+- [ ] An ambiguous description requests focused clarification instead of silently guessing.
 - [ ] A no-signup public/demo-key fixture produces a no-human-input success result with its documented limitations.
 - [ ] A signup-required fixture follows one shared browser session through agent-side credential retrieval, pausing only for human-only steps.
-- [ ] The same generic research-and-routing implementation accepts unrelated app names; no allowlist or app-name-specific route is used.
+- [ ] The same generic resolution, research, and routing implementation accepts unrelated app names and app descriptions; no allowlist, fixed recommendation table, or app-specific route is used.
 - [ ] The Browserbase live browser is embedded in the app; no standalone browser handoff URL is used as the user workflow.
 - [ ] Agent commands are paused while the human controls the browser and resume in the same session only after explicit handback.
 - [ ] A payment-walled target stops without collecting or entering payment information and reports the observed blocker.

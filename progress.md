@@ -8,7 +8,7 @@ This file is both the finite delivery roadmap and the durable checkpoint log for
 - Execute checkpoints in order. A checkpoint may contain small red-green test cycles, but no later checkpoint begins before the current checkpoint exits cleanly.
 - A checkpoint is complete only when its stated deliverables exist, its verification commands pass, this file records the evidence, and the checkpoint commit is pushed to GitHub.
 - Commit and push useful interim progress when needed; every completed checkpoint always ends in a clean pushed commit.
-- Never hard-code support for a named app. Any app name or identifying description must take the same generic research, classification, browser-automation, and result-reporting path.
+- Never hard-code support or recommendations for named apps. A direct app name or clear app requirements must take the same generic resolution, research, classification, browser-automation, and result-reporting path.
 - Use named apps only as test fixtures that exercise distinct paths.
 - If scope changes, update the scope spec and this roadmap in the same checkpoint.
 
@@ -58,12 +58,13 @@ This file is both the finite delivery roadmap and the durable checkpoint log for
 
 **Deliverables:**
 
-- Research pipeline that starts from any app name or description and locates official developer/API sources dynamically.
+- Input-resolution pipeline that either accepts a directly named app or dynamically selects a suitable concrete app from clear user requirements, explaining the evidence-backed choice.
+- Research pipeline that starts from the resolved app and locates official developer/API sources dynamically.
 - Structured, evidence-backed plan classifying the observed route as public credential, signup/access flow, payment/eligibility block, or insufficient verified evidence.
 - Prompt-injection and untrusted-page boundaries enforced at the research seam.
-- Tests use multiple interchangeable fixtures to prove behavior is evidence-driven rather than app-name-driven.
+- Tests use multiple interchangeable direct-name and requirements-based fixtures to prove resolution and routing are evidence-driven rather than app-name-driven.
 
-**Exit criteria:** classification tests pass for all result types, unrelated app inputs traverse the same implementation, and sources/evidence appear in the returned plan.
+**Exit criteria:** direct-name, clear-hint, and ambiguous-hint tests pass; classification tests pass for all result types; unrelated inputs traverse the same implementation; and selection/source evidence appears in the returned plan.
 
 ## Checkpoint 3 — Generic browser execution and lifecycle safety
 
@@ -114,7 +115,7 @@ This file is both the finite delivery roadmap and the durable checkpoint log for
 - End-to-end application wiring across research, planning, browser execution, HITL, extraction, and failure reporting.
 - Responsive, accessible reviewer experience with clear recovery from configuration and provider errors.
 
-**Exit criteria:** local end-to-end tests cover no-human success, HITL success, observed blocker, timeout, and arbitrary unrelated input; full verification suite passes.
+**Exit criteria:** local end-to-end tests cover direct app input, requirements-based app discovery, no-human success, HITL success, observed blocker, timeout, and arbitrary unrelated input; full verification suite passes.
 
 ## Checkpoint 7 — Production deployment and submission
 
