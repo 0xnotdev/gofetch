@@ -140,6 +140,8 @@ A success result contains the credential, resolved app name, selection reason wh
 - [x] Browser navigation is restricted to verified official domains and provider credentials remain server-side.
 - [x] Only one run is active at a time and quota/timeout controls prevent accidental free-tier exhaustion.
 - [x] A timeout or genuine block renders a clear final failure state.
+- [ ] The deployed service passes a diverse input matrix covering at least two unrelated direct app names, one requirements/hints description, one ambiguous description, and one documented public credential; infrastructure errors never count as target blockers.
+- [ ] At least one deployed signup-required target reaches a genuine human-only pause in embedded Live View, resumes the unchanged session after explicit handback, and continues to a credential or an exact target-side blocker.
 
 ## 10. Out of scope
 
@@ -194,7 +196,7 @@ Finish the free-text UI, consent, target confirmation, progress feed, embedded b
 
 ### Checkpoint 7 — Deployment and submission
 
-Deploy the public application, configure production secrets and limits, run clean-deployment acceptance tests across diverse fixtures, finish the README and architecture notes, audit the implementation against every acceptance criterion, and record final evidence. Exit only when a clean checkout passes all checks, the hosted app passes acceptance, no secrets are committed, and the final commit is pushed. Completing Checkpoint 7 means the assignment is finished.
+Deploy the public application, configure production secrets and limits, run clean-deployment acceptance tests across a diverse input matrix, finish the README and architecture notes, audit the implementation against every acceptance criterion, and record final evidence. The hosted matrix must include at least two unrelated direct app names, one requirements/hints input, one ambiguous input, one public credential, and one signup path that reaches human pause and same-session resume. A result labelled `blocked` fails acceptance if its reason is an infrastructure or provider-configuration error. Exit only when a clean checkout passes all checks, the hosted app passes this acceptance matrix, no secrets are committed, and the final commit is pushed. Completing Checkpoint 7 means the assignment is finished.
 
 ## 13. External-platform assumptions to validate
 
@@ -202,4 +204,4 @@ As checked on 2026-08-08, Browserbase's [Live View documentation](https://docs.b
 
 ---
 
-*v0.5 — complete build scope, architecture, safety contract, result semantics, and finite checkpoint plan for an 8–10 hour implementation.*
+*v0.6 — adds explicit diverse hosted-input and real signup pause/resume gates to the final checkpoint.*

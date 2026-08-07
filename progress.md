@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 100%
+**Implementation progress:** 86%
 
-**Completed implementation checkpoints:** 7 of 7
+**Completed implementation checkpoints:** 6 of 7
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Assignment complete, verified, deployed, documented, and pushed; post-completion Twilio planning and Stagehand v3 runtime regressions fixed with hosted acceptance.
+**Current status:** Checkpoint 7 reopened. The Model Gateway browser-runtime defect is fixed and pushed; diverse hosted input and real signup pause/resume acceptance are pending.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -205,7 +205,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Checkpoint 7 — Deployment and submission
 
-**Status:** complete
+**Status:** reopened
 
 **Implementation and deployment commits:** `c95cf18`, `7d4ce6e`, `af1327a`, `6b599a3`, `60e8294`, `be0504a`, `0603bd0`, `f7ca99a`, `fee3f12`
 
@@ -265,7 +265,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Stagehand v3 browser-runtime compatibility
 
-**Status:** complete
+**Status:** superseded by Model Gateway regression work below
 
 **Implementation commit:** `7fa8a84`
 
@@ -287,6 +287,33 @@ The current Browserbase API key resolves its project automatically; no separate 
 - Hosted Twilio API acceptance after deployment returned `planning/signup_required`, then a real Browserbase run returned `blocked` on `www.twilio.com` rather than `technical_failure`.
 - Full suite passed with 63 tests across 13 files, plus typecheck, lint, production build, high-severity audit gate, secret scan, and `git diff --check`.
 
+**Acceptance correction:** the two `blocked` results above were accepted too weakly. Their reason was a missing `GOOGLE_GENERATIVE_AI_API_KEY`, which is an infrastructure failure, not a legitimate target blocker. Checkpoint 7 was therefore reopened instead of treating the assignment as complete.
+
+### Browserbase Model Gateway execution repair
+
+**Status:** implementation complete; hosted acceptance pending
+
+**Implementation commit:** `c70a2c3`
+
+**Observed symptom:** starting browser work produced a `blocked` result whose reason said the Google Generative AI API key was missing.
+
+**Root cause:** Stagehand 3.7.1 uses its local provider client when `experimental: true`; that bypassed Browserbase Model Gateway and attempted to authenticate directly with Google. Passing the configured model again would not fix the routing mode.
+
+**Delivered:**
+
+- Disabled experimental/local-provider execution so all model-backed browser decisions continue through Browserbase Model Gateway with the existing server-side Browserbase key.
+- Replaced the experimental autonomous-agent call with a bounded generic `extract → one safe act → domain check` loop.
+- Preserved structured credential, human-intervention, payment, blocker, and completion outcomes without named-app logic.
+- Preserved private handback values as Stagehand variables rather than prompt text.
+- Added regression coverage for Model Gateway mode, generic action progression, private-value redaction, credential mapping, and cross-domain action termination.
+
+**Verification evidence:**
+
+- The exact adapter regression was observed red with `experimental: true`, then green after the routing repair.
+- `npm test` — passed; 65 tests across 13 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
+- Hosted multi-input and real signup pause/resume acceptance remain required before Checkpoint 7 returns to complete.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -304,3 +331,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 7 complete; assignment at 100% | `fee3f12`, 60 tests, clean production build, Render deployment, hosted direct/discovery/public-credential acceptance passed |
 | 2026-08-08 | Twilio provider-schema regression fixed; assignment remains at 100% | `3c97c86`, 62 tests, local provider repro and hosted Twilio acceptance passed |
 | 2026-08-08 | Stagehand v3 browser runtime fixed; assignment remains at 100% | `7fa8a84`, 63 tests, live local and hosted Twilio browser execution no longer fail technically |
+| 2026-08-08 | Checkpoint 7 reopened; implementation returns to 86% | `c70a2c3`, false `blocked` acceptance corrected; 65 tests and production build passed; hosted matrix pending |
