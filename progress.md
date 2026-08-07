@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Assignment complete, verified, deployed, documented, and pushed; post-completion Twilio regression fixed and hosted acceptance passed.
+**Current status:** Assignment complete, verified, deployed, documented, and pushed; post-completion Twilio planning and Stagehand v3 runtime regressions fixed with hosted acceptance.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -228,7 +228,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 **Final verification evidence:**
 
-- `npm test` — passed; 62 tests across 13 files.
+- `npm test` — passed; 63 tests across 13 files.
 - `npm run typecheck` — passed.
 - `npm run lint` — passed.
 - `npm run build` — passed; all UI and API routes built successfully.
@@ -263,6 +263,30 @@ The current Browserbase API key resolves its project automatically; no separate 
 - Two new regression tests cover descriptive signup output and verified-official-source fallback.
 - Full suite passed with 62 tests across 13 files, plus typecheck, lint, production build, high-severity audit gate, secret scan, and `git diff --check`.
 
+### Stagehand v3 browser-runtime compatibility
+
+**Status:** complete
+
+**Implementation commit:** `7fa8a84`
+
+**Observed symptom:** after the corrected Twilio plan, starting browser work created and closed a Browserbase session in under two seconds and returned `technical_failure`.
+
+**Root cause:** the Stagehand adapter called a `context.setDomainPolicy` method that is not part of the installed Stagehand v3 context API. A locally declared interface and fake adapter had masked the mismatch.
+
+**Delivered:**
+
+- Removed the nonexistent provider context call and aligned the adapter with the current Stagehand v3 context surface.
+- Enabled the documented experimental mode required by abort signals, callbacks, and tool exclusion.
+- Enforced verified HTTPS hostnames within GoFetch before and after direct navigation and after every agent step.
+- Disabled the agent's autonomous `goto`, `navback`, and search tools while preserving semantic interaction on the verified page.
+- Added a regression test using the real Stagehand v3 context shape and a negative unverified-domain navigation assertion.
+
+**Verification evidence:**
+
+- Live local Twilio execution returned `blocked` on `www.twilio.com` rather than `technical_failure`.
+- Hosted Twilio API acceptance after deployment returned `planning/signup_required`, then a real Browserbase run returned `blocked` on `www.twilio.com` rather than `technical_failure`.
+- Full suite passed with 63 tests across 13 files, plus typecheck, lint, production build, high-severity audit gate, secret scan, and `git diff --check`.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -279,3 +303,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 7 deployment preparation pushed; progress remains 86% | `c95cf18`, Render Blueprint, architecture notes, and local deployment build passed |
 | 2026-08-08 | Checkpoint 7 complete; assignment at 100% | `fee3f12`, 60 tests, clean production build, Render deployment, hosted direct/discovery/public-credential acceptance passed |
 | 2026-08-08 | Twilio provider-schema regression fixed; assignment remains at 100% | `3c97c86`, 62 tests, local provider repro and hosted Twilio acceptance passed |
+| 2026-08-08 | Stagehand v3 browser runtime fixed; assignment remains at 100% | `7fa8a84`, 63 tests, live local and hosted Twilio browser execution no longer fail technically |

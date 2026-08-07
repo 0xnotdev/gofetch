@@ -18,7 +18,7 @@ GoFetch accepts one free-text input containing either an app name or clear requi
 
 The final local quality gate passed on 2026-08-08:
 
-- 62 Vitest tests across 13 files;
+- 63 Vitest tests across 13 files;
 - TypeScript type checking;
 - ESLint;
 - Next.js production build;
@@ -32,7 +32,7 @@ The final hosted application was tested after Render reported commit `fee3f12` l
 | `GitHub` | Preserved the named app, found three exact official sources, and produced a signup-required plan. |
 | `a project-management app with a free API` | Dynamically selected Project Manager, explained why, and returned `needs_clarification`/insufficient evidence when the fetched official documentation did not expose a credential. |
 | `NASA Open APIs` | Dynamically selected NASA APIs and returned the official `DEMO_KEY` as `obtained_unverified`, with copy control, official-source links, and documented rate limits. |
-| `twilio api` | Resolved Twilio, returned a signup-required API-key plan with three official Twilio sources, and exposed the shared-browser start action. |
+| `twilio api` | Resolved Twilio, returned a signup-required API-key plan with three official Twilio sources, and ran a real Browserbase session on the verified Twilio host without an adapter-level technical failure. |
 
 The same-session human handoff was verified separately with Browserbase session `d2783f59-7f63-4784-9f50-d95cdbfca7aa`: automation paused, a human entered `gofetch-human-check` in Live View, automation resumed with the unchanged session ID, and the session closed as `COMPLETED`.
 
