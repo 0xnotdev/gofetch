@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 29%
+**Implementation progress:** 43%
 
-**Completed implementation checkpoints:** 2 of 7
+**Completed implementation checkpoints:** 3 of 7
 
-**Current checkpoint:** Checkpoint 3 — Generic browser execution and lifecycle safety
+**Current checkpoint:** Checkpoint 4 — Same-session human intervention
 
-**Current status:** Checkpoints 1–2 complete and pushed. Checkpoint 3 implementation and automated verification are pushed; its required live Browserbase connectivity check is waiting for local provider credentials.
+**Current status:** Checkpoints 1–3 complete and pushed; Checkpoint 4 is ready to begin.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -81,17 +81,15 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 - `npm run lint` — passed.
 - `npm run build` — passed; `/api/runs` and `/api/runs/[id]/confirm` built successfully.
 - `git diff --check` — passed.
-- Provider adapters are contract-tested with controlled external-boundary fakes. Real Browserbase connectivity is an explicit Checkpoint 3 exit check and requires project credentials.
-
-## Active checkpoint
+- Provider adapters are contract-tested with controlled external-boundary fakes. Real Browserbase connectivity is recorded in Checkpoint 3.
 
 ### Checkpoint 3 — Generic browser execution and lifecycle safety
 
-**Status:** in progress
+**Status:** complete
 
-**Interim implementation commit:** `75576d8`
+**Implementation commits:** `75576d8`, `02689d5`
 
-**Delivered so far:**
+**Delivered:**
 
 - Generic Stagehand/Browserbase session adapter with semantic DOM-mode execution and no named-app routing.
 - Dynamic exact-host domain policy derived only from secure, credential-free official plan URLs.
@@ -102,7 +100,7 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 
 **TDD evidence:** dynamic navigation/cleanup, payment stop, one-run locking, quota rejection, throttling, timeout, cancellation, cleanup failure, Stagehand configuration/mapping, partial initialization cleanup, execution routing, confirmation enforcement, and cancellation routing were each introduced through observed red→green cycles.
 
-**Automated verification evidence:**
+**Verification evidence:**
 
 - `npm ci` — passed.
 - `npm test` — passed; 30 tests across 9 files.
@@ -111,8 +109,19 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 - `npm run build` — passed; execution and cancellation API routes built successfully.
 - `npm audit --audit-level=high` — passed; low-severity transitive findings remain as documented above.
 - `git diff --check` — passed.
+- `npm run check:browserbase` — passed; created and immediately closed Browserbase session `5f692963-20ff-461b-8afc-9af70a7cbc32`.
+- `browse cloud sessions list --json` — confirmed that session as `COMPLETED` with GoFetch connectivity-check metadata.
+- Tracked-secret scan — passed; the Browserbase key exists only in ignored `.env.local`.
 
-**Remaining exit check:** run `npm run check:browserbase` once after `BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID` are configured in `.env.local`. These values are currently absent, so no browser quota was consumed and Checkpoint 3 remains at 29% rather than being marked complete.
+The current Browserbase API key resolves its project automatically; no separate project ID is required or accepted by GoFetch configuration.
+
+## Active checkpoint
+
+### Checkpoint 4 — Same-session human intervention
+
+**Status:** not started
+
+**Next action:** add Live View session metadata and implement explicit agent pause → human takeover → control handback → same-session resume through public seams and tests.
 
 ## Build log
 
@@ -122,3 +131,4 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 | 2026-08-08 | Checkpoint 1 complete; implementation at 14% | `398418d`, clean install and full verification passed |
 | 2026-08-08 | Checkpoint 2 complete; implementation at 29% | `45d5a14`, 15 tests and full verification passed |
 | 2026-08-08 | Checkpoint 3 automated implementation pushed; progress remains 29% pending live connectivity | `75576d8`, 30 tests and full local verification passed |
+| 2026-08-08 | Checkpoint 3 complete; implementation at 43% | `02689d5`, live Browserbase session completed and full verification passed |
