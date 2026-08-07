@@ -1,5 +1,6 @@
 import type { PlannedRunSnapshot } from "@/domain/run";
 import { findRun, saveRun } from "@/run/run-store";
+import { canConfirmTarget } from "@/run/target-confirmation";
 
 interface ConfirmTargetDependencies {
   findRun: (id: string) => PlannedRunSnapshot | undefined;
@@ -26,7 +27,7 @@ export function createConfirmTargetHandler(dependencies: ConfirmTargetDependenci
       );
     }
 
-    if (run.state !== "awaiting_target_confirmation" || !run.plan) {
+    if (!canConfirmTarget(run) || !run.plan) {
       return Response.json(
         {
           error: {

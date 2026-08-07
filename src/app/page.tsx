@@ -3,6 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 
 import type { PlannedRunSnapshot, RunResult, SuccessResult } from "@/domain/run";
+import { canConfirmTarget } from "@/run/target-confirmation";
 
 const EXAMPLE_QUERY = "A project-management app with a free API";
 
@@ -254,25 +255,23 @@ export default function Home() {
                   {run.plan.clarificationQuestion ? (
                     <p className="confirmation-note">{run.plan.clarificationQuestion}</p>
                   ) : null}
-                  {run.plan.requiresConfirmation ? (
-                    run.targetConfirmedAt ? (
-                      <p className="confirmation-note">Target confirmed. Browser work may proceed.</p>
-                    ) : (
-                      <div className="confirmation-box">
-                        <p className="confirmation-note">
-                          Confirm this target before GoFetch creates an account or takes another
-                          external action.
-                        </p>
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          onClick={confirmTarget}
-                          disabled={isConfirming}
-                        >
-                          {isConfirming ? "Confirming…" : `Use ${run.plan.appName}`}
-                        </button>
-                      </div>
-                    )
+                  {run.targetConfirmedAt ? (
+                    <p className="confirmation-note">Target confirmed. Browser work may proceed.</p>
+                  ) : canConfirmTarget(run) ? (
+                    <div className="confirmation-box">
+                      <p className="confirmation-note">
+                        Confirm this target before GoFetch creates an account or takes another
+                        external action.
+                      </p>
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={confirmTarget}
+                        disabled={isConfirming}
+                      >
+                        {isConfirming ? "Confirming…" : `Use ${run.plan.appName}`}
+                      </button>
+                    </div>
                   ) : null}
                   {run.state === "planning" && run.plan.path === "signup_required" ? (
                     <button
