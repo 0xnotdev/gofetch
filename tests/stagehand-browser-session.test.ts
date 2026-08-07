@@ -321,4 +321,64 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       ),
     ).rejects.toThrow("outside the verified domain policy");
   });
+
+  it("treats a loading page as a retryable step instead of a target blocker", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.example.test/register"),
+    };
+    const extract = vi
+      .fn()
+      .mockResolvedValueOnce({
+        kind: "blocked",
+        summary: "The page is still loading, unable to proceed.",
+      })
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "Identity details are required.",
+        intervention: {
+          kind: "identity_value",
+          prompt: "Enter your identity details in the live browser.",
+          reason: "Only the account owner can provide them.",
+          sensitive: true,
+        },
+      });
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Waited for the page.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-loading",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-loading",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const session = await factory.create(new AbortController().signal);
+    await session.setAllowedDomains(["accounts.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create an account.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://accounts.example.test/docs"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ kind: "human_required" });
+    expect(act).toHaveBeenCalledWith("Wait for the current page to finish loading.");
+  });
 });

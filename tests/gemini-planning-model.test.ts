@@ -266,7 +266,7 @@ describe("GeminiPlanningModel", () => {
         documents: [
           {
             url: sourceUrl,
-            content: "Sign up for an account, then generate an Auth Token.",
+            content: `Sign up for an account at ${signupUrl}, then generate an Auth Token.`,
           },
         ],
       }),
@@ -275,6 +275,43 @@ describe("GeminiPlanningModel", () => {
       credentialTypes: ["bearer_token"],
       signupUrl,
       publicCredential: null,
+    });
+  });
+
+  it("rejects an invented signup URL that is absent from official evidence", async () => {
+    const sourceUrl = "https://docs.example.test/authentication";
+    const planner = new GeminiPlanningModel({
+      generate: async () => ({
+        workflowCategory: "signup_required",
+        credentialTypes: ["api_key"],
+        summary: "Create an account before generating an API key.",
+        signupUrl: "https://accounts.evil.test/register",
+        blocker: null,
+        publicCredential: null,
+      }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "Example API",
+        target: {
+          inputMode: "direct",
+          appName: "Example API",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [
+          {
+            url: sourceUrl,
+            content: "Create an account, then open the API key settings.",
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      path: "signup_required",
+      signupUrl: sourceUrl,
     });
   });
 

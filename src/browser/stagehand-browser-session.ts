@@ -261,6 +261,22 @@ class StagehandBrowserSession implements BrowserSession {
       }
 
       const decision = parsed.data;
+      if (
+        decision.kind === "blocked" &&
+        /(?:still |currently )?load(?:ing|ed)|loading (?:page|spinner)/i.test(
+          decision.summary,
+        )
+      ) {
+        const waitResult = await this.#stagehand.act(
+          "Wait for the current page to finish loading.",
+        );
+        throwIfAborted(signal);
+        this.#assertAllowedUrl(page.url());
+        if (waitResult.success) {
+          continue;
+        }
+      }
+
       if (decision.kind !== "act") {
         const { action: _unusedAction, kind, ...observation } = decision;
         return {

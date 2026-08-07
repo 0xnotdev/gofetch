@@ -42,15 +42,19 @@ try {
     throw new Error("Browserbase did not return session and Live View metadata.");
   }
 
-  await stagehand.context.setDomainPolicy({
-    allowedDomains: ["www.selenium.dev"],
-  });
   const page = stagehand.context.pages()[0];
   if (!page) throw new Error("The live session has no page.");
+  const assertAllowedPage = () => {
+    const url = new URL(page.url());
+    if (url.protocol !== "https:" || url.hostname !== "www.selenium.dev") {
+      throw new Error("The handoff check left its verified test domain.");
+    }
+  };
   await page.goto("https://www.selenium.dev/selenium/web/web-form.html", {
     waitUntil: "domcontentloaded",
     timeoutMs: 45_000,
   });
+  assertAllowedPage();
 
   console.log(`SESSION_ID=${sessionId}`);
   console.log(`LIVE_VIEW_URL=${liveViewUrl}`);
@@ -66,10 +70,12 @@ try {
   }
 
   const actualValue = await page.locator('input[name="my-text"]').inputValue();
+  assertAllowedPage();
   if (actualValue !== expectedValue) {
     throw new Error("The expected human-entered value was not found.");
   }
   await page.locator('button[type="submit"]').click();
+  assertAllowedPage();
 
   console.log(`RESUMED_SESSION_ID=${sessionId}`);
   console.log("SAME_SESSION_RESUME=true");
