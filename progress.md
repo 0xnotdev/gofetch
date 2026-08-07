@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 14%
+**Implementation progress:** 29%
 
-**Completed implementation checkpoints:** 1 of 7
+**Completed implementation checkpoints:** 2 of 7
 
-**Current checkpoint:** Checkpoint 2 — Generic target resolution, research, and planning
+**Current checkpoint:** Checkpoint 3 — Generic browser execution and lifecycle safety
 
-**Current status:** Checkpoint 1 complete and pushed; Checkpoint 2 ready to begin.
+**Current status:** Checkpoints 1–2 complete and pushed; Checkpoint 3 ready to begin.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -54,13 +54,42 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 - Production-server smoke test — `/` returned HTTP 200 and a generic requirements query returned `state: resolving` from `/api/runs`.
 - `git diff --check` — passed.
 
+### Checkpoint 2 — Generic target resolution, research, and planning
+
+**Status:** complete
+
+**Implementation commit:** `45d5a14`
+
+**Delivered:**
+
+- Generic direct-name, requirements-based discovery, and ambiguous-input resolution contracts.
+- Browserbase Search and Fetch adapters using official API endpoints, HTTPS source matching, no redirects, and bounded document content.
+- Gemini structured-output planner with runtime Zod validation and explicit untrusted-data prompts.
+- Evidence-backed credential paths for public credentials, signup, observed blockers, and insufficient official evidence.
+- Mandatory target confirmation before external action on an app selected from requirements.
+- In-memory run storage and a target-confirmation API/UI flow.
+- Redacted research-provider failure responses; server-only provider configuration.
+- No app allowlist, named-app routing, fixed recommendation table, or per-app credential logic.
+
+**TDD evidence:** direct planning, discovery confirmation, unverified-source rejection, ambiguity clarification, Search/Fetch mapping, prompt-injection boundaries, contradictory blocked results, API planning, redacted failure, and target confirmation were each introduced through observed red→green cycles.
+
+**Verification evidence:**
+
+- `npm ci` — passed; 0 reported vulnerabilities.
+- `npm test` — passed; 15 tests across 5 files.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; `/api/runs` and `/api/runs/[id]/confirm` built successfully.
+- `git diff --check` — passed.
+- Provider adapters are contract-tested with controlled external-boundary fakes. Real Browserbase connectivity is an explicit Checkpoint 3 exit check and requires project credentials.
+
 ## Active checkpoint
 
-### Checkpoint 2 — Generic target resolution, research, and planning
+### Checkpoint 3 — Generic browser execution and lifecycle safety
 
 **Status:** not started
 
-**Next action:** define the public resolution/plan result fixtures at the approved run API seam, then implement the first direct-name resolution tracer bullet.
+**Next action:** define the browser-session lifecycle seam, add Browserbase/Stagehand dependencies, and implement create → navigate → stop/cleanup as the first tracer bullet.
 
 ## Build log
 
@@ -68,3 +97,4 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 | --- | --- | --- |
 | 2026-08-08 | Scope/repository preparation complete; implementation remains at 0% | Documentation commits on `main` |
 | 2026-08-08 | Checkpoint 1 complete; implementation at 14% | `398418d`, clean install and full verification passed |
+| 2026-08-08 | Checkpoint 2 complete; implementation at 29% | `45d5a14`, 15 tests and full verification passed |
