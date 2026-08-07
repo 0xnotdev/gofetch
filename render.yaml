@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: gofetch
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.1
+      - key: BROWSERBASE_API_KEY
+        sync: false
+      - key: BROWSERBASE_BROWSER_MODEL
+        value: google/gemini-2.5-flash

@@ -25,6 +25,14 @@ For live research, configure:
 
 Provider keys are read only by the server runtime and are never returned to the browser.
 
+## Deployment
+
+The repository includes a Render Blueprint for the single-process Node deployment this in-memory reviewer demo requires. Create a Blueprint from this repository, provide `BROWSERBASE_API_KEY` when Render prompts for the secret, and let Render use the remaining settings from `render.yaml`.
+
+[Deploy GoFetch to Render](https://render.com/deploy?repo=https://github.com/0xnotdev/gofetch)
+
+See [`architecture.md`](./architecture.md) for the request flow, trust boundaries, lifecycle controls, and deployment tradeoffs.
+
 ## Verification
 
 ```bash
