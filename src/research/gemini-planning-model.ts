@@ -63,6 +63,96 @@ const pathClassificationSchema = z
     }
   });
 
+type CredentialType = PathClassification["credentialTypes"][number];
+
+const credentialTypes = new Set<CredentialType>([
+  "api_key",
+  "personal_access_token",
+  "bearer_token",
+  "oauth_client",
+  "public_demo_key",
+]);
+
+function normalizeCredentialType(value: unknown): CredentialType | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.toLowerCase().replaceAll("-", "_").trim();
+  if (credentialTypes.has(normalized as CredentialType)) {
+    return normalized as CredentialType;
+  }
+  if (normalized.includes("demo") || normalized.includes("public")) {
+    return "public_demo_key";
+  }
+  if (normalized.includes("personal access") || normalized === "pat") {
+    return "personal_access_token";
+  }
+  if (normalized.includes("oauth") || normalized.includes("client")) {
+    return "oauth_client";
+  }
+  if (normalized.includes("bearer")) {
+    return "bearer_token";
+  }
+  if (normalized.includes("api") && normalized.includes("key")) {
+    return "api_key";
+  }
+  return null;
+}
+
+function normalizeDocumentedPublicCredential(
+  value: unknown,
+  documents: SourceDocument[],
+): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.publicCredential !== "string" || !raw.publicCredential) {
+    return value;
+  }
+
+  const source = documents.find((document) =>
+    document.content.includes(raw.publicCredential as string),
+  );
+  if (!source) {
+    return value;
+  }
+
+  const normalizedTypes = Array.isArray(raw.credentialTypes)
+    ? raw.credentialTypes
+        .map(normalizeCredentialType)
+        .filter((type): type is CredentialType => type !== null)
+    : [];
+  const credentialType: CredentialType = "public_demo_key";
+
+  return {
+    ...raw,
+    path: "public_credential",
+    credentialTypes: [...new Set([...normalizedTypes, credentialType])],
+    summary:
+      typeof raw.summary === "string" && raw.summary.trim()
+        ? raw.summary
+        : "The official documentation publishes a credential for limited use.",
+    signupUrl: null,
+    blocker: null,
+    publicCredential: {
+      credentialType,
+      credential: raw.publicCredential,
+      sourceUrl: source.url,
+      usageNote:
+        typeof raw.summary === "string" && raw.summary.trim()
+          ? raw.summary
+          : "Use only according to the official documentation.",
+      limitations:
+        typeof raw.blocker === "string" && raw.blocker.trim()
+          ? raw.blocker
+          : "Use only within the documented limits.",
+    },
+  };
+}
+
 interface GenerateInput {
   prompt: string;
   schema: z.ZodType;
@@ -149,8 +239,9 @@ export class GeminiPlanningModel {
       `OFFICIAL_DOCUMENTS_DATA=${JSON.stringify(input.documents)}`,
     ].join("\n");
 
+    const generated = await this.#generate({ prompt, schema: pathClassificationSchema });
     return pathClassificationSchema.parse(
-      await this.#generate({ prompt, schema: pathClassificationSchema }),
+      normalizeDocumentedPublicCredential(generated, input.documents),
     );
   }
 }

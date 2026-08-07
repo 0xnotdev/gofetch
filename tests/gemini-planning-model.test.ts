@@ -145,4 +145,46 @@ describe("GeminiPlanningModel", () => {
       }),
     ).rejects.toThrow();
   });
+
+  it("normalizes a verbatim public credential from loose model output", async () => {
+    const sourceUrl = "https://developers.example.test/demo";
+    const planner = new GeminiPlanningModel({
+      generate: async () => ({
+        path: "A public demo credential is available for initial exploration.",
+        credentialTypes: ["API key", "DEMO_KEY api key"],
+        summary: "The official docs provide a rate-limited demo credential.",
+        signupUrl: null,
+        blocker: "The demo credential has lower documented rate limits.",
+        publicCredential: "DEMO_KEY",
+      }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "Example Open API",
+        target: {
+          inputMode: "direct",
+          appName: "Example Open API",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [
+          {
+            url: sourceUrl,
+            content: "Use DEMO_KEY for exploration. It has lower rate limits.",
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      path: "public_credential",
+      credentialTypes: ["api_key", "public_demo_key"],
+      publicCredential: {
+        credentialType: "public_demo_key",
+        credential: "DEMO_KEY",
+        sourceUrl,
+      },
+    });
+  });
 });
