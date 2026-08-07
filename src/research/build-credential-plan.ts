@@ -100,9 +100,29 @@ async function buildCredentialPlanWithoutCleanup(
     };
   }
 
-  const documents = await Promise.all(
+  const fetchResults = await Promise.allSettled(
     officialSources.map((url) => dependencies.research.fetch(url)),
   );
+  const documents = fetchResults.flatMap((result) =>
+    result.status === "fulfilled" ? [result.value] : [],
+  );
+
+  if (documents.length === 0) {
+    return {
+      inputMode: target.inputMode,
+      appName: target.appName,
+      selectionReason: target.selectionReason,
+      clarificationQuestion: target.clarificationQuestion,
+      requiresConfirmation: target.inputMode === "discovery",
+      path: "insufficient_evidence",
+      credentialTypes: [],
+      summary: "The located official API sources could not be retrieved safely.",
+      signupUrl: null,
+      blocker: "No official source returned usable credential-path evidence.",
+      officialSources,
+    };
+  }
+  const fetchedOfficialSources = documents.map((document) => document.url);
   const classification = await dependencies.planner.classifyPath({
     query,
     target,
@@ -134,7 +154,7 @@ async function buildCredentialPlanWithoutCleanup(
         signupUrl: null,
         blocker: "No verified public credential was found.",
         publicCredential: null,
-        officialSources,
+        officialSources: fetchedOfficialSources,
       };
     }
   }
@@ -146,6 +166,6 @@ async function buildCredentialPlanWithoutCleanup(
     clarificationQuestion: target.clarificationQuestion,
     requiresConfirmation: target.inputMode === "discovery",
     ...classification,
-    officialSources,
+    officialSources: fetchedOfficialSources,
   };
 }

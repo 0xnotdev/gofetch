@@ -256,11 +256,10 @@ describe("buildCredentialPlan", () => {
     });
   });
 
-  it("disposes planning infrastructure when official-source fetching fails", async () => {
+  it("returns insufficient evidence and disposes planning infrastructure when all fetches fail", async () => {
     const dispose = vi.fn().mockResolvedValue(undefined);
 
-    await expect(
-      buildCredentialPlan("Northstar Tasks", {
+    const plan = await buildCredentialPlan("Northstar Tasks", {
         research: {
           async search() {
             return [
@@ -290,8 +289,65 @@ describe("buildCredentialPlan", () => {
           },
           dispose,
         },
-      }),
-    ).rejects.toThrow("Official source was unavailable.");
+      });
+
+    expect(plan).toMatchObject({
+      path: "insufficient_evidence",
+      blocker: "No official source returned usable credential-path evidence.",
+    });
     expect(dispose).toHaveBeenCalledOnce();
+  });
+
+  it("classifies from successful official sources when another source cannot be fetched", async () => {
+    let classifiedDocuments: Array<{ url: string; content: string }> = [];
+    const successfulUrl = "https://developers.northstar.test/auth";
+    const plan = await buildCredentialPlan("Northstar Tasks", {
+      research: {
+        async search() {
+          return [
+            { title: "Northstar root", url: "https://developers.northstar.test/" },
+            { title: "Northstar auth", url: successfulUrl },
+          ];
+        },
+        async fetch(url) {
+          if (url !== successfulUrl) throw new Error("Redirected source rejected.");
+          return { url, content: "Create a free account and issue an API key." };
+        },
+      },
+      planner: {
+        async resolveTarget() {
+          return {
+            inputMode: "discovery" as const,
+            appName: "Northstar Tasks",
+            selectionReason: "It is the strongest evidence-backed match.",
+            clarificationQuestion: null,
+            requiresConfirmation: true,
+            officialSourceUrls: [
+              "https://developers.northstar.test/",
+              successfulUrl,
+            ],
+          };
+        },
+        async classifyPath({ documents }) {
+          classifiedDocuments = documents;
+          return {
+            path: "signup_required" as const,
+            credentialTypes: ["api_key" as const],
+            summary: "Create an account and issue a key.",
+            signupUrl: "https://northstar.test/signup",
+            blocker: null,
+          };
+        },
+      },
+    });
+
+    expect(classifiedDocuments).toEqual([
+      { url: successfulUrl, content: "Create a free account and issue an API key." },
+    ]);
+    expect(plan).toMatchObject({
+      inputMode: "discovery",
+      path: "signup_required",
+      officialSources: [successfulUrl],
+    });
   });
 });
