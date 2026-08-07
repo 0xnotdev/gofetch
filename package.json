@@ -10,9 +10,11 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:browserbase": "node --env-file-if-exists=.env.local scripts/check-browserbase.mjs"
   },
   "dependencies": {
+    "@browserbasehq/stagehand": "3.7.1",
     "@google/genai": "2.16.0",
     "next": "16.3.0",
     "react": "19.2.8",
@@ -27,5 +29,8 @@
     "eslint-config-next": "16.3.0",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
+  },
+  "overrides": {
+    "undici": "6.28.0"
   }
 }
