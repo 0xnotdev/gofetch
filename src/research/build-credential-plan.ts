@@ -35,6 +35,7 @@ export interface PlanningModel {
     target: ResolvedTarget;
     documents: SourceDocument[];
   }): Promise<PathClassification>;
+  dispose?(): Promise<void>;
 }
 
 export interface CredentialPlanDependencies {
@@ -43,6 +44,17 @@ export interface CredentialPlanDependencies {
 }
 
 export async function buildCredentialPlan(
+  query: string,
+  dependencies: CredentialPlanDependencies,
+): Promise<CredentialPlan> {
+  try {
+    return await buildCredentialPlanWithoutCleanup(query, dependencies);
+  } finally {
+    await dependencies.planner.dispose?.();
+  }
+}
+
+async function buildCredentialPlanWithoutCleanup(
   query: string,
   dependencies: CredentialPlanDependencies,
 ): Promise<CredentialPlan> {

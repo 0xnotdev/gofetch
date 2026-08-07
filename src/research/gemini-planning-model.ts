@@ -13,7 +13,7 @@ const resolvedTargetSchema = z.object({
   appName: z.string().min(1).nullable(),
   selectionReason: z.string().min(1),
   clarificationQuestion: z.string().min(1).nullable(),
-  officialSourceUrls: z.array(z.url()).max(3),
+  officialSourceUrls: z.array(z.string()),
 });
 
 const pathClassificationSchema = z
@@ -68,7 +68,7 @@ interface GenerateInput {
   schema: z.ZodType;
 }
 
-type StructuredGenerator = (input: GenerateInput) => Promise<unknown>;
+export type StructuredGenerator = (input: GenerateInput) => Promise<unknown>;
 
 type GeminiPlanningModelOptions =
   | { generate: StructuredGenerator }
@@ -122,9 +122,13 @@ export class GeminiPlanningModel {
     const result = resolvedTargetSchema.parse(
       await this.#generate({ prompt, schema: resolvedTargetSchema }),
     );
+    const searchedUrls = new Set(input.searchResults.map((result) => result.url));
 
     return {
       ...result,
+      officialSourceUrls: result.officialSourceUrls
+        .filter((url) => searchedUrls.has(url))
+        .slice(0, 3),
       requiresConfirmation: result.inputMode === "discovery",
     };
   }

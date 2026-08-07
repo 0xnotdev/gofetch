@@ -140,7 +140,7 @@ export class BrowserbaseStagehandSessionFactory
     const stagehand = new StagehandConstructor({
       env: "BROWSERBASE",
       apiKey: this.#options.apiKey,
-      model: this.#options.model ?? "google/gemini-3.5-flash",
+      model: this.#options.model ?? "google/gemini-2.5-flash",
       systemPrompt: SYSTEM_PROMPT,
       keepAlive: false,
       waitForCaptchaSolves: false,

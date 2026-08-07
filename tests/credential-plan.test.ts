@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { buildCredentialPlan } from "../src/research/build-credential-plan";
 
@@ -254,5 +254,44 @@ describe("buildCredentialPlan", () => {
       path: "insufficient_evidence",
       clarificationQuestion: "What main task should the app help you accomplish?",
     });
+  });
+
+  it("disposes planning infrastructure when official-source fetching fails", async () => {
+    const dispose = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      buildCredentialPlan("Northstar Tasks", {
+        research: {
+          async search() {
+            return [
+              {
+                title: "Northstar API",
+                url: "https://developers.northstar.test/api",
+              },
+            ];
+          },
+          async fetch() {
+            throw new Error("Official source was unavailable.");
+          },
+        },
+        planner: {
+          async resolveTarget() {
+            return {
+              inputMode: "direct" as const,
+              appName: "Northstar Tasks",
+              selectionReason: "The user named it.",
+              clarificationQuestion: null,
+              requiresConfirmation: false,
+              officialSourceUrls: ["https://developers.northstar.test/api"],
+            };
+          },
+          async classifyPath() {
+            throw new Error("Classification must not run after fetch failure.");
+          },
+          dispose,
+        },
+      }),
+    ).rejects.toThrow("Official source was unavailable.");
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });

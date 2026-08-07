@@ -18,10 +18,10 @@ Open `http://localhost:3000`.
 
 For live research, configure:
 
-- `BROWSERBASE_API_KEY` for Browserbase Search and Fetch.
-- `BROWSERBASE_BROWSER_MODEL` only when overriding the default Stagehand model.
-- `GEMINI_API_KEY` for structured target resolution and credential-path planning.
-- `GEMINI_MODEL` only when overriding the default `gemini-3.1-flash-lite` model.
+- `BROWSERBASE_API_KEY` for Search, Fetch, browser sessions, Live View, and Model Gateway.
+- `BROWSERBASE_BROWSER_MODEL` only when overriding the documented default `google/gemini-2.5-flash` model.
+- `GEMINI_API_KEY` optionally, to use a direct Gemini connection for planning instead of Browserbase Model Gateway.
+- `GEMINI_MODEL` only when overriding the direct-Gemini default `gemini-3.1-flash-lite` model.
 
 Provider keys are read only by the server runtime and are never returned to the browser.
 
@@ -38,10 +38,11 @@ After configuring Browserbase, run the quota-conscious one-session connectivity 
 
 ```bash
 npm run check:browserbase
+npm run check:model-gateway
 ```
 
 ## Current capability
 
-Checkpoints 1–3 establish the application foundation, generic planning flow, and safe browser runtime. A run can accept either a direct app name or requirements, search and fetch official sources through Browserbase, resolve and classify the path with schema-validated Gemini output, reject unverified source URLs, ask one focused clarification question for ambiguous input, require confirmation before acting on a discovered app, and execute a signup plan through a restricted Browserbase session.
+Checkpoints 1–6 establish the complete local reviewer experience. A run can accept either a direct app name or requirements, search and fetch official sources through Browserbase, resolve and classify the path with schema-validated output, reject unverified source URLs, ask one focused clarification question for ambiguous input, require confirmation before acting on a discovered app, and execute a signup plan through a restricted Browserbase session.
 
-The generic Stagehand runtime enforces researched-domain navigation, one active run, session quota and start throttles, a 12-minute timeout, cancellation, payment refusal, and force-close cleanup. Live View supports private inline values or direct human control, followed by explicit handback and same-session agent resume. Credential results enforce official sources and distinguish validated, obtained-but-unverified, and blocked outcomes. The complete reviewer journey is the active Checkpoint 6 work.
+The generic Stagehand runtime enforces researched-domain navigation, one active run, session quota and start throttles, a 12-minute timeout, cancellation, payment refusal, and force-close cleanup. Live View supports private inline values or direct human control, followed by explicit handback and same-session agent resume. Credential results enforce official sources and distinguish validated, obtained-but-unverified, and blocked outcomes. Deployment and final submission evidence remain in Checkpoint 7.

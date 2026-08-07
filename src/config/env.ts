@@ -6,7 +6,7 @@ const serverEnvSchema = z.object({
   BROWSERBASE_BROWSER_MODEL: z
     .string()
     .min(1)
-    .default("google/gemini-3.5-flash"),
+    .default("google/gemini-2.5-flash"),
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).default("gemini-3.1-flash-lite"),
 });

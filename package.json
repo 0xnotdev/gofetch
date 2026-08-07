@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:browserbase": "node --env-file-if-exists=.env.local scripts/check-browserbase.mjs",
+    "check:model-gateway": "node --env-file-if-exists=.env.local scripts/check-model-gateway.mjs",
     "check:handoff": "node --env-file-if-exists=.env.local scripts/check-live-handoff.mjs"
   },
   "dependencies": {
