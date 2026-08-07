@@ -149,14 +149,15 @@ describe("GeminiPlanningModel", () => {
   it("normalizes a verbatim public credential from loose model output", async () => {
     const sourceUrl = "https://developers.example.test/demo";
     const planner = new GeminiPlanningModel({
-      generate: async () => ({
-        path: "A public demo credential is available for initial exploration.",
-        credentialTypes: ["API key", "DEMO_KEY api key"],
-        summary: "The official docs provide a rate-limited demo credential.",
-        signupUrl: null,
-        blocker: "The demo credential has lower documented rate limits.",
-        publicCredential: "DEMO_KEY",
-      }),
+      generate: async ({ schema }) =>
+        schema.parse({
+          path: "A public demo credential is available for initial exploration.",
+          credentialTypes: ["API key", "DEMO_KEY api key"],
+          summary: "The official docs provide a rate-limited demo credential.",
+          signupUrl: null,
+          blocker: "The demo credential has lower documented rate limits.",
+          publicCredential: "DEMO_KEY",
+        }),
     });
 
     await expect(

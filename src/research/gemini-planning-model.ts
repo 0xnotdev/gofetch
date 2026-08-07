@@ -63,6 +63,30 @@ const pathClassificationSchema = z
     }
   });
 
+// Model providers can satisfy the factual request while drifting from enum labels.
+// Accept a deliberately loose extraction shape, then enforce the strict schema below
+// after applying the evidence-backed normalization.
+const pathClassificationExtractionSchema = z.object({
+  path: z.string(),
+  credentialTypes: z.array(z.string()),
+  summary: z.string(),
+  signupUrl: z.string().nullable(),
+  blocker: z.string().nullable(),
+  publicCredential: z
+    .union([
+      z.string(),
+      z.object({
+        credentialType: z.string().optional(),
+        credential: z.string().optional(),
+        sourceUrl: z.string().optional(),
+        usageNote: z.string().optional(),
+        limitations: z.string().optional(),
+      }),
+    ])
+    .nullable()
+    .optional(),
+});
+
 type CredentialType = PathClassification["credentialTypes"][number];
 
 const credentialTypes = new Set<CredentialType>([
@@ -239,7 +263,10 @@ export class GeminiPlanningModel {
       `OFFICIAL_DOCUMENTS_DATA=${JSON.stringify(input.documents)}`,
     ].join("\n");
 
-    const generated = await this.#generate({ prompt, schema: pathClassificationSchema });
+    const generated = await this.#generate({
+      prompt,
+      schema: pathClassificationExtractionSchema,
+    });
     return pathClassificationSchema.parse(
       normalizeDocumentedPublicCredential(generated, input.documents),
     );
