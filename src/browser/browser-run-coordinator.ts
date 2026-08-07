@@ -1,10 +1,21 @@
 import type { CredentialPlan } from "../domain/credential-plan";
+import type { HumanInterventionRequest } from "../domain/run";
 
 export interface BrowserActionRequest {
   appName: string;
   planSummary: string;
   credentialTypes: string[];
   officialSources: string[];
+}
+
+export interface HumanHandback {
+  interventionId: string;
+  value?: string;
+}
+
+export interface PrivateBrowserInput {
+  value: string;
+  description: string;
 }
 
 export type BrowserObservationKind =
@@ -17,15 +28,18 @@ export interface BrowserObservation {
   kind: BrowserObservationKind;
   summary: string;
   currentUrl: string;
+  intervention?: Omit<HumanInterventionRequest, "id">;
 }
 
 export interface BrowserSession {
   id: string;
+  liveViewUrl: string;
   setAllowedDomains(domains: string[]): Promise<void>;
   navigate(url: string, signal: AbortSignal): Promise<void>;
   execute(
     request: BrowserActionRequest,
     signal: AbortSignal,
+    privateInput?: PrivateBrowserInput,
   ): Promise<BrowserObservation>;
   close(): Promise<void>;
 }
@@ -49,6 +63,13 @@ export type BrowserRunResult =
       currentUrl: string;
     }
   | {
+      status: "awaiting_human";
+      sessionId: string;
+      liveViewUrl: string;
+      currentUrl: string;
+      intervention: HumanInterventionRequest;
+    }
+  | {
       status: "technical_failure";
       reason: string;
     }
@@ -65,13 +86,23 @@ export interface BrowserRunCoordinatorOptions {
   now?: () => number;
 }
 
+interface ActiveBrowserRun {
+  controller: AbortController;
+  request: BrowserActionRequest;
+  session?: BrowserSession;
+  phase: "starting" | "agent" | "human";
+  timeout: ReturnType<typeof setTimeout>;
+  closePromise?: Promise<void>;
+  intervention?: HumanInterventionRequest;
+}
+
 export class BrowserRunCoordinator {
   readonly #factory: BrowserSessionFactory;
   readonly #maxSessionStarts: number;
   readonly #maxRunDurationMs: number;
   readonly #minRunIntervalMs: number;
   readonly #now: () => number;
-  #activeController: AbortController | null = null;
+  #activeRun: ActiveBrowserRun | null = null;
   #sessionStarts = 0;
   #lastStartedAt: number | null = null;
 
@@ -84,16 +115,59 @@ export class BrowserRunCoordinator {
   }
 
   cancel(): boolean {
-    if (!this.#activeController) {
+    if (!this.#activeRun) {
       return false;
     }
 
-    this.#activeController.abort({ code: "cancelled" });
+    const active = this.#activeRun;
+    active.controller.abort({ code: "cancelled" });
+    void this.#finish(active);
     return true;
   }
 
+  async resume(
+    sessionId: string,
+    handback?: HumanHandback,
+  ): Promise<BrowserRunResult> {
+    const active = this.#activeRun;
+    if (!active || !active.session || active.session.id !== sessionId) {
+      return {
+        status: "technical_failure",
+        reason: "No matching paused browser session is available.",
+      };
+    }
+
+    if (active.phase !== "human") {
+      return {
+        status: "technical_failure",
+        reason: "The browser agent already has control of this session.",
+      };
+    }
+
+    if (
+      handback &&
+      active.intervention &&
+      handback.interventionId !== active.intervention.id
+    ) {
+      return {
+        status: "technical_failure",
+        reason: "The human-intervention request is no longer active.",
+      };
+    }
+
+    active.phase = "agent";
+    const privateInput = handback?.value
+      ? {
+          value: handback.value,
+          description: active.intervention?.prompt ?? "Human-provided input",
+        }
+      : undefined;
+    active.intervention = undefined;
+    return this.#execute(active, privateInput);
+  }
+
   async run(plan: CredentialPlan): Promise<BrowserRunResult> {
-    if (this.#activeController) {
+    if (this.#activeRun) {
       return {
         status: "technical_failure",
         reason: "Another browser run is already active.",
@@ -128,84 +202,149 @@ export class BrowserRunCoordinator {
       plan.signupUrl,
     ]);
     const controller = new AbortController();
-    this.#activeController = controller;
     this.#sessionStarts += 1;
     this.#lastStartedAt = now;
-    let session: BrowserSession | undefined;
-    const timeout = setTimeout(() => {
+    const request: BrowserActionRequest = {
+      appName: plan.appName,
+      planSummary: plan.summary,
+      credentialTypes: plan.credentialTypes,
+      officialSources: plan.officialSources,
+    };
+    const active = {} as ActiveBrowserRun;
+    active.controller = controller;
+    active.request = request;
+    active.phase = "starting";
+    active.timeout = setTimeout(() => {
       controller.abort({ code: "timeout" });
+      void this.#finish(active);
     }, this.#maxRunDurationMs);
+    this.#activeRun = active;
 
     try {
-      session = await this.#factory.create(controller.signal);
-      await session.setAllowedDomains(allowedDomains);
-      await session.navigate(plan.signupUrl, controller.signal);
-      const observation = await session.execute(
-        {
-          appName: plan.appName,
-          planSummary: plan.summary,
-          credentialTypes: plan.credentialTypes,
-          officialSources: plan.officialSources,
-        },
-        controller.signal,
-      );
+      active.session = await this.#factory.create(controller.signal);
+      await active.session.setAllowedDomains(allowedDomains);
+      await active.session.navigate(plan.signupUrl, controller.signal);
+      active.phase = "agent";
+      return await this.#execute(active);
+    } catch {
+      const result = this.#failureFor(active);
+      await this.#finish(active);
+      return result;
+    }
+  }
 
-      if (
-        observation.kind === "payment_required" ||
-        observation.kind === "blocked"
-      ) {
-        return {
-          status: "blocked",
-          sessionId: session.id,
-          reason: observation.summary,
-          blocker:
-            observation.kind === "payment_required"
-              ? "payment_required"
-              : "observed_blocker",
-          currentUrl: observation.currentUrl,
-        };
-      }
-
+  async #execute(
+    active: ActiveBrowserRun,
+    privateInput?: PrivateBrowserInput,
+  ): Promise<BrowserRunResult> {
+    const session = active.session;
+    if (!session) {
       return {
+        status: "technical_failure",
+        reason: "The browser session failed before the task completed.",
+      };
+    }
+
+    let observation: BrowserObservation;
+    try {
+      observation = privateInput
+        ? await session.execute(
+            active.request,
+            active.controller.signal,
+            privateInput,
+          )
+        : await session.execute(active.request, active.controller.signal);
+    } catch {
+      const result = this.#failureFor(active);
+      await this.#finish(active);
+      return result;
+    }
+
+    if (observation.kind === "human_required") {
+      active.phase = "human";
+      const intervention: HumanInterventionRequest = {
+        id: crypto.randomUUID(),
+        kind: observation.intervention?.kind ?? "browser_takeover",
+        prompt:
+          observation.intervention?.prompt ??
+          "Complete the requested step in the live browser, then hand control back.",
+        reason: observation.intervention?.reason ?? observation.summary,
+        sensitive: observation.intervention?.sensitive ?? true,
+      };
+      active.intervention = intervention;
+      return {
+        status: "awaiting_human",
+        sessionId: session.id,
+        liveViewUrl: session.liveViewUrl,
+        currentUrl: observation.currentUrl,
+        intervention,
+      };
+    }
+
+    let result: BrowserRunResult;
+    if (
+      observation.kind === "payment_required" ||
+      observation.kind === "blocked"
+    ) {
+      result = {
+        status: "blocked",
+        sessionId: session.id,
+        reason: observation.summary,
+        blocker:
+          observation.kind === "payment_required"
+            ? "payment_required"
+            : "observed_blocker",
+        currentUrl: observation.currentUrl,
+      };
+    } else {
+      result = {
         status: "completed",
         sessionId: session.id,
         message: observation.summary,
         currentUrl: observation.currentUrl,
       };
-    } catch {
-      const abortReason = controller.signal.reason as
-        | { code?: string }
-        | undefined;
+    }
 
-      if (abortReason?.code === "timeout") {
-        return {
-          status: "timed_out",
-          reason: "The browser run exceeded its 12-minute safety limit.",
-        };
-      }
+    await this.#finish(active);
+    return result;
+  }
 
-      if (abortReason?.code === "cancelled") {
-        return {
-          status: "cancelled",
-          reason: "The browser run was cancelled by the user.",
-        };
-      }
-
+  #failureFor(active: ActiveBrowserRun): BrowserRunResult {
+    const abortReason = active.controller.signal.reason as
+      | { code?: string }
+      | undefined;
+    if (abortReason?.code === "timeout") {
       return {
-        status: "technical_failure",
-        reason: "The browser session failed before the task completed.",
+        status: "timed_out",
+        reason: "The browser run exceeded its 12-minute safety limit.",
       };
-    } finally {
-      clearTimeout(timeout);
+    }
+    if (abortReason?.code === "cancelled") {
+      return {
+        status: "cancelled",
+        reason: "The browser run was cancelled by the user.",
+      };
+    }
+    return {
+      status: "technical_failure",
+      reason: "The browser session failed before the task completed.",
+    };
+  }
+
+  async #finish(active: ActiveBrowserRun): Promise<void> {
+    clearTimeout(active.timeout);
+    if (!active.closePromise) {
+      active.closePromise = (async () => {
       try {
-        await session?.close();
+          await active.session?.close();
       } catch {
         // Stagehand close is already a force-close. There is no safer retry path.
-      } finally {
-        if (this.#activeController === controller) {
-          this.#activeController = null;
         }
-      }
+      })();
+    }
+    await active.closePromise;
+    if (this.#activeRun === active) {
+      this.#activeRun = null;
     }
   }
 }

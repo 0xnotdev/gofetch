@@ -225,6 +225,58 @@ h1 {
   text-decoration: none;
 }
 
+.intervention {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.live-view {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.live-view iframe {
+  width: 100%;
+  min-height: 420px;
+  border: 0;
+}
+
+.live-view.agent-control iframe {
+  pointer-events: none;
+}
+
+.control-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  background: rgba(9, 11, 12, 0.72);
+  font-weight: 800;
+}
+
+.private-input {
+  display: grid;
+  gap: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.private-input input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.32);
+}
+
 .expectations ol {
   margin: 24px 0;
   padding-left: 1.25rem;

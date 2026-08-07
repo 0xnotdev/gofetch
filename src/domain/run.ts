@@ -35,6 +35,7 @@ export interface RunSnapshot {
 export interface PlannedRunSnapshot extends RunSnapshot {
   plan?: CredentialPlan;
   targetConfirmedAt?: string;
+  browser?: BrowserSessionSnapshot;
 }
 
 export interface ProgressEvent {
@@ -57,6 +58,13 @@ export interface HumanInterventionRequest {
   prompt: string;
   reason: string;
   sensitive: boolean;
+}
+
+export interface BrowserSessionSnapshot {
+  sessionId: string;
+  liveViewUrl: string;
+  currentUrl: string;
+  intervention: HumanInterventionRequest;
 }
 
 export type CredentialType =

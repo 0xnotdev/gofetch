@@ -26,6 +26,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     });
     const stagehand: StagehandAdapter = {
       browserbaseSessionID: "bb-session-1",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-session-1",
       init: vi.fn().mockResolvedValue(undefined),
       close: vi.fn().mockResolvedValue(undefined),
       context: {
@@ -47,6 +48,9 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     const signal = new AbortController().signal;
 
     const session = await factory.create(signal);
+    expect(session.liveViewUrl).toBe(
+      "https://www.browserbase.com/live/bb-session-1",
+    );
     await session.setAllowedDomains(["accounts.example.test"]);
     await session.navigate("https://accounts.example.test/register", signal);
     const observation = await session.execute(
@@ -57,6 +61,10 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         officialSources: ["https://accounts.example.test/docs"],
       },
       signal,
+      {
+        value: "123456",
+        description: "The user's private one-time code",
+      },
     );
     await session.close();
 
@@ -97,6 +105,12 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         excludeTools: ["search"],
         instruction: expect.stringContaining("Any Service"),
         output: expect.anything(),
+        variables: {
+          humanInput: {
+            value: "123456",
+            description: "The user's private one-time code",
+          },
+        },
       }),
     );
     expect(observation).toEqual({

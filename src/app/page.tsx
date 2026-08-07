@@ -12,6 +12,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
+  const [humanValue, setHumanValue] = useState("");
 
   async function startRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,6 +67,60 @@ export default function Home() {
       setError("GoFetch could not confirm the target. Please try again.");
     } finally {
       setIsConfirming(false);
+    }
+  }
+
+  async function executeBrowser() {
+    if (!run) return;
+    setError(null);
+    setIsExecuting(true);
+
+    try {
+      const response = await fetch(`/api/runs/${run.id}/execute`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as
+        | { run: PlannedRunSnapshot }
+        | { error: { message: string } };
+      if (!response.ok) {
+        setError("error" in body ? body.error.message : "Browser execution could not start.");
+        return;
+      }
+      setRun((body as { run: PlannedRunSnapshot }).run);
+    } catch {
+      setError("GoFetch could not reach the browser runtime. Please try again.");
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+
+  async function handBackControl() {
+    if (!run?.browser) return;
+    setError(null);
+    setIsResuming(true);
+
+    try {
+      const response = await fetch(`/api/runs/${run.id}/resume`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          interventionId: run.browser.intervention.id,
+          value: humanValue.trim() || undefined,
+        }),
+      });
+      const body = (await response.json()) as
+        | { run: PlannedRunSnapshot }
+        | { error: { message: string } };
+      if (!response.ok) {
+        setError("error" in body ? body.error.message : "Control handback failed.");
+        return;
+      }
+      setHumanValue("");
+      setRun((body as { run: PlannedRunSnapshot }).run);
+    } catch {
+      setError("GoFetch could not resume the browser agent. Please try again.");
+    } finally {
+      setIsResuming(false);
     }
   }
 
@@ -139,6 +196,16 @@ export default function Home() {
                       </div>
                     )
                   ) : null}
+                  {run.state === "planning" && run.plan.path === "signup_required" ? (
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={executeBrowser}
+                      disabled={isExecuting}
+                    >
+                      {isExecuting ? "Agent workingâ€¦" : "Start browser work"}
+                    </button>
+                  ) : null}
                   <ul className="source-list" aria-label="Official sources">
                     {run.plan.officialSources.map((source) => (
                       <li key={source}>
@@ -148,6 +215,48 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
+                  {run.state === "awaiting_human" && run.browser ? (
+                    <section className="intervention" aria-label="Human intervention required">
+                      <div>
+                        <p className="plan-target">Human action needed</p>
+                        <p>{run.browser.intervention.prompt}</p>
+                        <p className="status-meta">{run.browser.intervention.reason}</p>
+                      </div>
+                      <div className={`live-view ${isResuming ? "agent-control" : ""}`}>
+                        <iframe
+                          title="Shared Browserbase live session"
+                          src={run.browser.liveViewUrl}
+                          sandbox="allow-same-origin allow-scripts"
+                          allow="clipboard-read; clipboard-write"
+                        />
+                        {isResuming ? <div className="control-overlay">Agent has controlâ€¦</div> : null}
+                      </div>
+                      {[
+                        "identity_value",
+                        "otp",
+                        "magic_link",
+                      ].includes(run.browser.intervention.kind) ? (
+                        <label className="private-input">
+                          Private value (optional if you entered it in the browser)
+                          <input
+                            type="password"
+                            value={humanValue}
+                            onChange={(event) => setHumanValue(event.target.value)}
+                            autoComplete="off"
+                            disabled={isResuming}
+                          />
+                        </label>
+                      ) : null}
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={handBackControl}
+                        disabled={isResuming}
+                      >
+                        {isResuming ? "Resuming agentâ€¦" : "Done â€” hand control back"}
+                      </button>
+                    </section>
+                  ) : null}
                 </div>
               ) : null}
             </div>

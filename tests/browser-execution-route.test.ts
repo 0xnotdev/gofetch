@@ -85,4 +85,42 @@ describe("POST /api/runs/:id/execute", () => {
       error: { code: "browser_execution_not_available" },
     });
   });
+
+  it("stores only transient session metadata when human control is required", async () => {
+    const saveRun = vi.fn();
+    const handler = createExecuteBrowserHandler({
+      findRun: () => plannedRun,
+      saveRun,
+      executePlan: vi.fn().mockResolvedValue({
+        status: "awaiting_human",
+        sessionId: "session-123",
+        liveViewUrl: "https://www.browserbase.com/live/session-123",
+        currentUrl: "https://accounts.example.test/challenge",
+        intervention: {
+          id: "intervention-1",
+          kind: "captcha",
+          prompt: "Complete the CAPTCHA, then hand control back.",
+          reason: "CAPTCHAs require human input.",
+          sensitive: false,
+        },
+      }),
+    });
+
+    const response = await handler(new Request("http://localhost"), {
+      params: Promise.resolve({ id: "run-1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(saveRun).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        state: "awaiting_human",
+        browser: {
+          sessionId: "session-123",
+          liveViewUrl: "https://www.browserbase.com/live/session-123",
+          currentUrl: "https://accounts.example.test/challenge",
+          intervention: expect.objectContaining({ id: "intervention-1" }),
+        },
+      }),
+    );
+  });
 });

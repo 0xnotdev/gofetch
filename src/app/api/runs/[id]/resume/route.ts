@@ -1,24 +1,35 @@
-import type { BrowserRunResult } from "@/browser/browser-run-coordinator";
-import { executeConfiguredBrowserPlan } from "@/browser/runtime";
-import type { CredentialPlan } from "@/domain/credential-plan";
+import type {
+  BrowserRunResult,
+  HumanHandback,
+} from "@/browser/browser-run-coordinator";
+import { resumeConfiguredBrowserRun } from "@/browser/runtime";
 import type { PlannedRunSnapshot, RunState } from "@/domain/run";
 import { findRun, saveRun } from "@/run/run-store";
+import { z } from "zod";
 
-interface ExecuteBrowserDependencies {
+const handbackSchema = z.object({
+  interventionId: z.string().min(1),
+  value: z.string().min(1).max(4_096).optional(),
+});
+
+interface ResumeBrowserDependencies {
   findRun: (id: string) => PlannedRunSnapshot | undefined;
   saveRun: (run: PlannedRunSnapshot) => void;
-  executePlan: (plan: CredentialPlan) => Promise<BrowserRunResult>;
+  resumeRun: (
+    sessionId: string,
+    handback: HumanHandback,
+  ) => Promise<BrowserRunResult>;
 }
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export function createExecuteBrowserHandler(
-  dependencies: ExecuteBrowserDependencies,
+export function createResumeBrowserHandler(
+  dependencies: ResumeBrowserDependencies,
 ) {
-  return async function executeBrowser(
-    _request: Request,
+  return async function resumeBrowser(
+    request: Request,
     context: RouteContext,
   ): Promise<Response> {
     const { id } = await context.params;
@@ -31,37 +42,37 @@ export function createExecuteBrowserHandler(
       );
     }
 
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      body = null;
+    }
+    const handback = handbackSchema.safeParse(body);
+
     if (
-      run.state !== "planning" ||
-      !run.plan ||
-      run.plan.path !== "signup_required"
+      run.state !== "awaiting_human" ||
+      !run.browser ||
+      !handback.success ||
+      handback.data.interventionId !== run.browser.intervention.id
     ) {
       return Response.json(
         {
           error: {
-            code: "browser_execution_not_available",
-            message: "This run is not ready for browser execution.",
+            code: "handback_not_available",
+            message: "This human-intervention request is no longer active.",
           },
         },
         { status: 409 },
       );
     }
 
-    const browsingRun: PlannedRunSnapshot = { ...run, state: "browsing" };
-    dependencies.saveRun(browsingRun);
-
-    let execution: BrowserRunResult;
-    try {
-      execution = await dependencies.executePlan(run.plan);
-    } catch {
-      execution = {
-        status: "technical_failure",
-        reason: "The browser runtime could not start the requested session.",
-      };
-    }
-
-    const finishedRun: PlannedRunSnapshot = {
-      ...browsingRun,
+    const execution = await dependencies.resumeRun(
+      run.browser.sessionId,
+      handback.data,
+    );
+    const updatedRun: PlannedRunSnapshot = {
+      ...run,
       state: stateFor(execution),
       browser:
         execution.status === "awaiting_human"
@@ -73,14 +84,16 @@ export function createExecuteBrowserHandler(
             }
           : undefined,
     };
-    dependencies.saveRun(finishedRun);
+    dependencies.saveRun(updatedRun);
 
-    return Response.json({ run: finishedRun, execution });
+    return Response.json({ run: updatedRun, execution });
   };
 }
 
 function stateFor(result: BrowserRunResult): RunState {
   switch (result.status) {
+    case "awaiting_human":
+      return "awaiting_human";
     case "blocked":
       return "blocked";
     case "cancelled":
@@ -89,15 +102,13 @@ function stateFor(result: BrowserRunResult): RunState {
       return "timed_out";
     case "technical_failure":
       return "technical_failure";
-    case "awaiting_human":
-      return "awaiting_human";
     case "completed":
       return "browsing";
   }
 }
 
-export const POST = createExecuteBrowserHandler({
+export const POST = createResumeBrowserHandler({
   findRun,
   saveRun,
-  executePlan: executeConfiguredBrowserPlan,
+  resumeRun: resumeConfiguredBrowserRun,
 });

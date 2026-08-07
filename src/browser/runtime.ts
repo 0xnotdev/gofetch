@@ -3,6 +3,7 @@ import type { CredentialPlan } from "../domain/credential-plan";
 import {
   BrowserRunCoordinator,
   type BrowserRunResult,
+  type HumanHandback,
 } from "./browser-run-coordinator";
 import { BrowserbaseStagehandSessionFactory } from "./stagehand-browser-session";
 
@@ -38,4 +39,17 @@ export async function executeConfiguredBrowserPlan(
 
 export function cancelConfiguredBrowserRun(): boolean {
   return configuredCoordinator?.cancel() ?? false;
+}
+
+export async function resumeConfiguredBrowserRun(
+  sessionId: string,
+  handback: HumanHandback,
+): Promise<BrowserRunResult> {
+  if (!configuredCoordinator) {
+    return {
+      status: "technical_failure",
+      reason: "No paused browser session is available.",
+    };
+  }
+  return configuredCoordinator.resume(sessionId, handback);
 }

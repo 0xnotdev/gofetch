@@ -29,7 +29,10 @@ export function createCancelBrowserHandler(
       );
     }
 
-    if (run.state !== "browsing" || !dependencies.cancelRun()) {
+    if (
+      (run.state !== "browsing" && run.state !== "awaiting_human") ||
+      !dependencies.cancelRun()
+    ) {
       return Response.json(
         {
           error: {
@@ -41,7 +44,11 @@ export function createCancelBrowserHandler(
       );
     }
 
-    const cancelledRun: PlannedRunSnapshot = { ...run, state: "cancelled" };
+    const cancelledRun: PlannedRunSnapshot = {
+      ...run,
+      state: "cancelled",
+      browser: undefined,
+    };
     dependencies.saveRun(cancelledRun);
     return Response.json(cancelledRun);
   };

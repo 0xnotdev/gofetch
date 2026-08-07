@@ -28,6 +28,7 @@ const signupPlan: CredentialPlan = {
 function createBrowserFake() {
   const session: BrowserSession = {
     id: "session-123",
+    liveViewUrl: "https://www.browserbase.com/devtools-fullscreen/session-123",
     setAllowedDomains: vi.fn().mockResolvedValue(undefined),
     navigate: vi.fn().mockResolvedValue(undefined),
     execute: vi.fn().mockResolvedValue({
@@ -105,6 +106,138 @@ describe("BrowserRunCoordinator", () => {
       currentUrl: "https://accounts.example.test/billing",
     });
     expect(session.close).toHaveBeenCalledOnce();
+  });
+
+  it("pauses for a human and resumes the same live session after handback", async () => {
+    const { factory, session } = createBrowserFake();
+    vi.mocked(session.execute)
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "A CAPTCHA requires human completion.",
+        currentUrl: "https://accounts.example.test/challenge",
+        intervention: {
+          kind: "captcha",
+          prompt: "Complete the CAPTCHA in the live browser, then hand control back.",
+          reason: "CAPTCHAs must be completed by a human.",
+          sensitive: false,
+        },
+      })
+      .mockResolvedValueOnce({
+        kind: "completed",
+        summary: "The signup flow continued.",
+        currentUrl: "https://accounts.example.test/settings",
+      });
+    const coordinator = new BrowserRunCoordinator({ factory });
+
+    const paused = await coordinator.run(signupPlan);
+
+    expect(paused).toMatchObject({
+      status: "awaiting_human",
+      sessionId: "session-123",
+      liveViewUrl:
+        "https://www.browserbase.com/devtools-fullscreen/session-123",
+      intervention: {
+        kind: "captcha",
+        sensitive: false,
+      },
+    });
+    expect(session.close).not.toHaveBeenCalled();
+
+    const resumed = await coordinator.resume("session-123");
+
+    expect(resumed).toMatchObject({
+      status: "completed",
+      sessionId: "session-123",
+    });
+    expect(factory.create).toHaveBeenCalledOnce();
+    expect(session.execute).toHaveBeenCalledTimes(2);
+    expect(session.close).toHaveBeenCalledOnce();
+  });
+
+  it("passes private human input as an ephemeral value on same-session resume", async () => {
+    const { factory, session } = createBrowserFake();
+    vi.mocked(session.execute)
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "An OTP is required.",
+        currentUrl: "https://accounts.example.test/verify",
+        intervention: {
+          kind: "otp",
+          prompt: "Enter the emailed one-time code.",
+          reason: "Email ownership must be verified.",
+          sensitive: true,
+        },
+      })
+      .mockResolvedValueOnce({
+        kind: "completed",
+        summary: "Verification completed.",
+        currentUrl: "https://accounts.example.test/settings",
+      });
+    const coordinator = new BrowserRunCoordinator({ factory });
+
+    const paused = await coordinator.run(signupPlan);
+    if (paused.status !== "awaiting_human") {
+      throw new Error("Expected the browser run to pause.");
+    }
+    await coordinator.resume("session-123", {
+      interventionId: paused.intervention.id,
+      value: "123456",
+    });
+
+    expect(session.execute).toHaveBeenNthCalledWith(
+      2,
+      expect.any(Object),
+      expect.any(AbortSignal),
+      {
+        value: "123456",
+        description: "Enter the emailed one-time code.",
+      },
+    );
+  });
+
+  it("never gives the human and agent control at the same time", async () => {
+    const { factory, session } = createBrowserFake();
+    let finishResume: ((value: {
+      kind: "completed";
+      summary: string;
+      currentUrl: string;
+    }) => void) | undefined;
+    vi.mocked(session.execute)
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "Human browser control is required.",
+        currentUrl: "https://accounts.example.test/challenge",
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishResume = resolve;
+          }),
+      );
+    const coordinator = new BrowserRunCoordinator({ factory });
+    const paused = await coordinator.run(signupPlan);
+    if (paused.status !== "awaiting_human") {
+      throw new Error("Expected the browser run to pause.");
+    }
+
+    const firstHandback = coordinator.resume("session-123", {
+      interventionId: paused.intervention.id,
+    });
+    await vi.waitFor(() => expect(session.execute).toHaveBeenCalledTimes(2));
+    const duplicateHandback = await coordinator.resume("session-123", {
+      interventionId: paused.intervention.id,
+    });
+
+    expect(duplicateHandback).toEqual({
+      status: "technical_failure",
+      reason: "The browser agent already has control of this session.",
+    });
+    finishResume?.({
+      kind: "completed",
+      summary: "Done.",
+      currentUrl: "https://accounts.example.test/settings",
+    });
+    await firstHandback;
   });
 
   it("allows only one active browser run", async () => {
