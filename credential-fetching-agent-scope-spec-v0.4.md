@@ -117,12 +117,7 @@ The application itself stores no credentials or personal information beyond the 
 
 ## 11. Build order
 
-1. Build the single-run UI and status/result state machine.
-2. Implement generic official-document research, path classification, and evidence capture for any input app.
-3. Add Browserbase session creation, agent browser control, and an embedded Live View.
-4. Add pause/handback/resume controls and inline secret-safe prompts.
-5. Add extraction, masking, session cleanup, timeout, and payment-wall stop behavior.
-6. Run the three acceptance demonstrations on a clean deployment.
+The finite checkpoint plan, checkpoint exit criteria, verification evidence, and current status are maintained in `progress.md`. Checkpoints execute in order, and completing the final deployment/acceptance checkpoint means the assignment is complete.
 
 ## 12. External-platform assumptions to validate before implementation
 
@@ -130,4 +125,4 @@ Browserbase documentation currently describes interactive Live View, including h
 
 ---
 
-*v0.4 — resolves the live-session, embedded-control, privacy, and named-demo decisions for an 8–10 hour build.*
+*v0.4 — resolves the generic-input, live-session, embedded-control, privacy, and finite-delivery decisions for an 8–10 hour build.*
