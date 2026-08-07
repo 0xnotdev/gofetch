@@ -19,7 +19,6 @@ Open `http://localhost:3000`.
 For live research, configure:
 
 - `BROWSERBASE_API_KEY` for Browserbase Search and Fetch.
-- `BROWSERBASE_PROJECT_ID` for remote browser sessions.
 - `BROWSERBASE_BROWSER_MODEL` only when overriding the default Stagehand model.
 - `GEMINI_API_KEY` for structured target resolution and credential-path planning.
 - `GEMINI_MODEL` only when overriding the default `gemini-3.1-flash-lite` model.

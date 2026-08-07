@@ -3,7 +3,6 @@ import { z } from "zod";
 const serverEnvSchema = z.object({
   APP_BASE_URL: z.url().default("http://localhost:3000"),
   BROWSERBASE_API_KEY: z.string().min(1).optional(),
-  BROWSERBASE_PROJECT_ID: z.string().min(1).optional(),
   BROWSERBASE_BROWSER_MODEL: z
     .string()
     .min(1)

@@ -14,14 +14,13 @@ function getConfiguredCoordinator(): BrowserRunCoordinator {
   }
 
   const env = readServerEnv();
-  if (!env.BROWSERBASE_API_KEY || !env.BROWSERBASE_PROJECT_ID) {
+  if (!env.BROWSERBASE_API_KEY) {
     throw new Error("Browser execution providers are not configured.");
   }
 
   configuredCoordinator = new BrowserRunCoordinator({
     factory: new BrowserbaseStagehandSessionFactory({
       apiKey: env.BROWSERBASE_API_KEY,
-      projectId: env.BROWSERBASE_PROJECT_ID,
       model: env.BROWSERBASE_BROWSER_MODEL,
     }),
     maxSessionStarts: 3,

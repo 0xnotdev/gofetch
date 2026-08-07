@@ -42,7 +42,6 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     } as unknown) as StagehandAdapterConstructor;
     const factory = new BrowserbaseStagehandSessionFactory({
       apiKey: "browserbase-secret",
-      projectId: "project-123",
       stagehandConstructor: StagehandFake,
     });
     const signal = new AbortController().signal;
@@ -64,13 +63,11 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(receivedOptions).toMatchObject({
       env: "BROWSERBASE",
       apiKey: "browserbase-secret",
-      projectId: "project-123",
       keepAlive: false,
       waitForCaptchaSolves: false,
       logInferenceToFile: false,
       verbose: 0,
       browserbaseSessionCreateParams: {
-        projectId: "project-123",
         keepAlive: false,
         timeout: 720,
         browserSettings: {
@@ -80,6 +77,10 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         },
       },
     });
+    expect(receivedOptions).not.toHaveProperty("projectId");
+    expect(receivedOptions?.browserbaseSessionCreateParams).not.toHaveProperty(
+      "projectId",
+    );
     expect(stagehand.context.setDomainPolicy).toHaveBeenCalledWith({
       allowedDomains: ["accounts.example.test"],
     });
@@ -124,7 +125,6 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     } as unknown) as StagehandAdapterConstructor;
     const factory = new BrowserbaseStagehandSessionFactory({
       apiKey: "browserbase-secret",
-      projectId: "project-123",
       stagehandConstructor: StagehandFake,
     });
 

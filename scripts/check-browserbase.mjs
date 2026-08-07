@@ -1,18 +1,16 @@
 import { Stagehand } from "@browserbasehq/stagehand";
 
 const apiKey = process.env.BROWSERBASE_API_KEY;
-const projectId = process.env.BROWSERBASE_PROJECT_ID;
 
-if (!apiKey || !projectId) {
+if (!apiKey) {
   console.error(
-    "Browserbase connectivity check skipped: configure BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID in .env.local.",
+    "Browserbase connectivity check skipped: configure BROWSERBASE_API_KEY in .env.local.",
   );
   process.exitCode = 2;
 } else {
   const stagehand = new Stagehand({
     env: "BROWSERBASE",
     apiKey,
-    projectId,
     model:
       process.env.BROWSERBASE_BROWSER_MODEL ?? "google/gemini-3.5-flash",
     keepAlive: false,
@@ -20,7 +18,6 @@ if (!apiKey || !projectId) {
     logInferenceToFile: false,
     verbose: 0,
     browserbaseSessionCreateParams: {
-      projectId,
       keepAlive: false,
       timeout: 60,
       browserSettings: {
