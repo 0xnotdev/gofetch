@@ -123,23 +123,23 @@ A success result contains the credential, resolved app name, selection reason wh
 
 ## 9. Acceptance criteria
 
-- [ ] Public hosted link, with no app-level login wall.
-- [ ] Free-text app input and live run status are functional.
-- [ ] A direct app-name input targets the named app.
-- [ ] A clear requirements/hints input dynamically selects a suitable concrete app, explains the choice, and continues through the same credential workflow.
-- [ ] A discovered app requires target confirmation before signup or another external side effect.
-- [ ] An ambiguous description requests focused clarification instead of silently guessing.
-- [ ] A no-signup public/demo-key fixture produces a no-human-input success result with its documented limitations.
-- [ ] A signup-required fixture follows one shared browser session through agent-side credential retrieval, pausing only for human-only steps.
-- [ ] The same generic resolution, research, and routing implementation accepts unrelated app names and app descriptions; no allowlist, fixed recommendation table, or app-specific route is used.
-- [ ] The Browserbase live browser is embedded in the app; no standalone browser handoff URL is used as the user workflow.
-- [ ] Agent commands are paused while the human controls the browser and resume in the same session only after explicit handback.
-- [ ] A payment-walled target stops without collecting or entering payment information and reports the observed blocker.
-- [ ] Results distinguish validated credentials, obtained-but-unverified credentials, target blockers, and technical failures.
-- [ ] No GoFetch-controlled persistence of PII or credentials; Browserbase retention is disclosed; sessions are closed and provider artifacts are deleted where supported.
-- [ ] Browser navigation is restricted to verified official domains and provider credentials remain server-side.
-- [ ] Only one run is active at a time and quota/timeout controls prevent accidental free-tier exhaustion.
-- [ ] A timeout or genuine block renders a clear final failure state.
+- [x] Public hosted link, with no app-level login wall.
+- [x] Free-text app input and live run status are functional.
+- [x] A direct app-name input targets the named app.
+- [x] A clear requirements/hints input dynamically selects a suitable concrete app, explains the choice, and continues through the same credential workflow.
+- [x] A discovered app requires target confirmation before signup or another external side effect.
+- [x] An ambiguous description requests focused clarification instead of silently guessing.
+- [x] A no-signup public/demo-key fixture produces a no-human-input success result with its documented limitations.
+- [x] A signup-required fixture follows one shared browser session through agent-side credential retrieval, pausing only for human-only steps.
+- [x] The same generic resolution, research, and routing implementation accepts unrelated app names and app descriptions; no allowlist, fixed recommendation table, or app-specific route is used.
+- [x] The Browserbase live browser is embedded in the app; no standalone browser handoff URL is used as the user workflow.
+- [x] Agent commands are paused while the human controls the browser and resume in the same session only after explicit handback.
+- [x] A payment-walled target stops without collecting or entering payment information and reports the observed blocker.
+- [x] Results distinguish validated credentials, obtained-but-unverified credentials, target blockers, and technical failures.
+- [x] No GoFetch-controlled persistence of PII or credentials; Browserbase retention is disclosed; sessions are closed and provider artifacts are deleted where supported.
+- [x] Browser navigation is restricted to verified official domains and provider credentials remain server-side.
+- [x] Only one run is active at a time and quota/timeout controls prevent accidental free-tier exhaustion.
+- [x] A timeout or genuine block renders a clear final failure state.
 
 ## 10. Out of scope
 

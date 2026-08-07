@@ -2,7 +2,9 @@
 
 GoFetch is a hosted agent that accepts either a specific app name or a clear description of the kind of app a user needs, researches the official API credential path, and works toward a usable credential in a shared live browser session.
 
-The complete product contract and delivery checkpoints are in [`scope.md`](./scope.md). Actual implementation progress and verification evidence are recorded in [`progress.md`](./progress.md).
+**Live app:** [https://gofetch-zw8v.onrender.com](https://gofetch-zw8v.onrender.com)
+
+The complete product contract and delivery checkpoints are in [`scope.md`](./scope.md). Actual implementation progress and verification evidence are recorded in [`progress.md`](./progress.md), and the final acceptance audit is in [`submission.md`](./submission.md).
 
 ## Local development
 
@@ -27,7 +29,7 @@ Provider keys are read only by the server runtime and are never returned to the 
 
 ## Deployment
 
-The repository includes a Render Blueprint for the single-process Node deployment this in-memory reviewer demo requires. Create a Blueprint from this repository, provide `BROWSERBASE_API_KEY` when Render prompts for the secret, and let Render use the remaining settings from `render.yaml`.
+The production reviewer deployment is live at [gofetch-zw8v.onrender.com](https://gofetch-zw8v.onrender.com). The repository includes a Render Blueprint for the single-process Node deployment this in-memory reviewer demo requires. To create another deployment, create a Blueprint from this repository, provide `BROWSERBASE_API_KEY` when Render prompts for the secret, and let Render use the remaining settings from `render.yaml`.
 
 [Deploy GoFetch to Render](https://render.com/deploy?repo=https://github.com/0xnotdev/gofetch)
 
@@ -51,6 +53,6 @@ npm run check:model-gateway
 
 ## Current capability
 
-Checkpoints 1–6 establish the complete local reviewer experience. A run can accept either a direct app name or requirements, search and fetch official sources through Browserbase, resolve and classify the path with schema-validated output, reject unverified source URLs, ask one focused clarification question for ambiguous input, require confirmation before acting on a discovered app, and execute a signup plan through a restricted Browserbase session.
+All seven delivery checkpoints are complete. A run can accept either a direct app name or requirements, search and fetch official sources through Browserbase, resolve and classify the path with schema-validated output, reject unverified source URLs, ask one focused clarification question for ambiguous input, require confirmation before acting on a discovered app, and execute a signup plan through a restricted Browserbase session.
 
-The generic Stagehand runtime enforces researched-domain navigation, one active run, session quota and start throttles, a 12-minute timeout, cancellation, payment refusal, and force-close cleanup. Live View supports private inline values or direct human control, followed by explicit handback and same-session agent resume. Credential results enforce official sources and distinguish validated, obtained-but-unverified, and blocked outcomes. Deployment and final submission evidence remain in Checkpoint 7.
+The generic Stagehand runtime enforces researched-domain navigation, one active run, session quota and start throttles, a 12-minute timeout, cancellation, payment refusal, and force-close cleanup. Live View supports private inline values or direct human control, followed by explicit handback and same-session agent resume. Credential results enforce official sources and distinguish validated, obtained-but-unverified, and blocked outcomes. See `submission.md` for hosted and same-session acceptance evidence and the explicit MVP limitations.

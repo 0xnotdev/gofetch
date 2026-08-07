@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 86%
+**Implementation progress:** 100%
 
-**Completed implementation checkpoints:** 6 of 7
+**Completed implementation checkpoints:** 7 of 7
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoints 1–6 complete and pushed; Checkpoint 7 deployment preparation is pushed.
+**Current status:** Assignment complete, verified, deployed, documented, and pushed.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -201,20 +201,40 @@ The current Browserbase API key resolves its project automatically; no separate 
 - A live `GitHub` API request returned HTTP 201 with a generic signup plan and three exact official GitHub documentation sources.
 - Browserbase session `18f3e70c-8828-45a7-b634-313ac9344540` completed after the live two-stage planning request.
 
-## Active checkpoint
+## Final checkpoint
 
 ### Checkpoint 7 — Deployment and submission
 
-**Status:** in progress
+**Status:** complete
 
-**Delivered so far:**
+**Implementation and deployment commits:** `c95cf18`, `7d4ce6e`, `af1327a`, `6b599a3`, `60e8294`, `be0504a`, `0603bd0`, `f7ca99a`, `fee3f12`
+
+**Delivered:**
 
 - Render single-process Node deployment blueprint with free-instance, health-check, Node-version, automatic-deploy, and secret-prompt configuration.
 - Architecture notes covering request flow, module seams, trust boundaries, lifecycle limits, hosting rationale, and production-expansion tradeoffs.
 - README deployment path and production environment guidance.
-- Deployment preparation commit `c95cf18` passed typecheck, lint, production build, and `git diff --check`.
+- Public Render service at `https://gofetch-zw8v.onrender.com`, with no application login wall and automatic deployment from `main`.
+- Production Browserbase secret and supported Model Gateway model configured server-side.
+- Generic provider-output normalization that accepts descriptive model labels only after exact official-document credential verification; no named-app routing was added.
+- Final acceptance audit in `submission.md`.
 
-**Next action:** create the Render Blueprint service, configure the production Browserbase secret, run hosted acceptance checks, finish submission documentation, and audit every scope acceptance criterion.
+**Hosted acceptance evidence:**
+
+- Direct `GitHub` input selected GitHub and returned a signup-required plan with three exact official sources.
+- Requirements input `a project-management app with a free API` dynamically selected Project Manager, explained the choice, and honestly returned insufficient evidence when the retrieved official page did not expose a credential.
+- Direct `NASA Open APIs` input selected NASA APIs and returned the official `DEMO_KEY` as `obtained_unverified`, with copy control, three official sources, and the documented hourly/daily limits.
+- Render reported commit `fee3f12` live before the final hosted run.
+
+**Final verification evidence:**
+
+- `npm test` — passed; 60 tests across 13 files.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; all UI and API routes built successfully.
+- `git diff --check` — passed.
+- Tracked-secret scan — passed; only the blank `.env.example` assignment is tracked.
+- Live same-session handoff remains verified by Browserbase session `d2783f59-7f63-4784-9f50-d95cdbfca7aa`, including human entry and `SAME_SESSION_RESUME=true`.
 
 ## Build log
 
@@ -230,3 +250,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 5 complete; implementation at 71% | `e5147a0`, 45 tests and full verification passed |
 | 2026-08-08 | Checkpoint 6 complete; implementation at 86% | `7ca2a04`, 56 tests, live Model Gateway planning, API plan, and browser smoke passed |
 | 2026-08-08 | Checkpoint 7 deployment preparation pushed; progress remains 86% | `c95cf18`, Render Blueprint, architecture notes, and local deployment build passed |
+| 2026-08-08 | Checkpoint 7 complete; assignment at 100% | `fee3f12`, 60 tests, clean production build, Render deployment, hosted direct/discovery/public-credential acceptance passed |
