@@ -1,12 +1,12 @@
 # GoFetch Build Progress
 
-**Implementation progress:** 43%
+**Implementation progress:** 57%
 
-**Completed implementation checkpoints:** 3 of 7
+**Completed implementation checkpoints:** 4 of 7
 
-**Current checkpoint:** Checkpoint 4 — Same-session human intervention
+**Current checkpoint:** Checkpoint 5 — Credential discovery, extraction, and validation
 
-**Current status:** Checkpoints 1–3 complete and pushed; Checkpoint 4 is ready to begin.
+**Current status:** Checkpoints 1–4 complete and pushed; Checkpoint 5 is ready to begin.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -115,15 +115,13 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 
 The current Browserbase API key resolves its project automatically; no separate project ID is required or accepted by GoFetch configuration.
 
-## Active checkpoint
-
 ### Checkpoint 4 — Same-session human intervention
 
-**Status:** in progress
+**Status:** complete
 
-**Interim implementation commit:** `2060bbb`
+**Implementation commits:** `2060bbb`, `db2192e`
 
-**Delivered so far:**
+**Delivered:**
 
 - Browserbase Live View metadata is returned only for an active paused session and embedded as a read/write iframe.
 - Structured interventions cover private identity values, OTPs, magic links, CAPTCHAs, and general browser takeover.
@@ -141,8 +139,18 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm run lint` — passed.
 - `npm run build` — passed; `/api/runs/[id]/resume` built successfully.
 - Tracked-secret scan and `git diff --check` — passed.
+- `npm run check:handoff` — passed with live Browserbase session `d2783f59-7f63-4784-9f50-d95cdbfca7aa`.
+- A human entered `gofetch-human-check` through Live View while automation was paused; deterministic automation then read the value and clicked Submit.
+- The harness reported identical `SESSION_ID` and `RESUMED_SESSION_ID` values and `SAME_SESSION_RESUME=true`.
+- `browse cloud sessions get` confirmed the handoff session closed with status `COMPLETED`.
 
-**Remaining exit check:** complete one manual Live View takeover and confirm deterministic automation resumes with the unchanged Browserbase session ID. Progress remains 43% until this succeeds.
+## Active checkpoint
+
+### Checkpoint 5 — Credential discovery, extraction, and validation
+
+**Status:** not started
+
+**Next action:** implement generic post-auth credential-page discovery and secret-safe extraction through the existing same-session browser seam, starting with red tests for masked status output and terminal result classification.
 
 ## Build log
 
@@ -154,3 +162,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 3 automated implementation pushed; progress remains 29% pending live connectivity | `75576d8`, 30 tests and full local verification passed |
 | 2026-08-08 | Checkpoint 3 complete; implementation at 43% | `02689d5`, live Browserbase session completed and full verification passed |
 | 2026-08-08 | Checkpoint 4 automated implementation pushed; progress remains 43% pending manual handoff | `2060bbb`, 37 tests and full local verification passed |
+| 2026-08-08 | Checkpoint 4 complete; implementation at 57% | `db2192e`, live human takeover and unchanged-session resume verified |
