@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:browserbase": "node --env-file-if-exists=.env.local scripts/check-browserbase.mjs"
+    "check:browserbase": "node --env-file-if-exists=.env.local scripts/check-browserbase.mjs",
+    "check:handoff": "node --env-file-if-exists=.env.local scripts/check-live-handoff.mjs"
   },
   "dependencies": {
     "@browserbasehq/stagehand": "3.7.1",

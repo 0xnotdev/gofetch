@@ -119,9 +119,30 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Checkpoint 4 — Same-session human intervention
 
-**Status:** not started
+**Status:** in progress
 
-**Next action:** add Live View session metadata and implement explicit agent pause → human takeover → control handback → same-session resume through public seams and tests.
+**Interim implementation commit:** `2060bbb`
+
+**Delivered so far:**
+
+- Browserbase Live View metadata is returned only for an active paused session and embedded as a read/write iframe.
+- Structured interventions cover private identity values, OTPs, magic links, CAPTCHAs, and general browser takeover.
+- Explicit handback resumes the exact Browserbase session without creating another session.
+- Private inline values are passed as ephemeral Stagehand variables, never interpolated into prompts, stored in run snapshots, or echoed in responses.
+- Human interaction is disabled immediately when agent control resumes; duplicate or stale handbacks are rejected.
+- Cancellation works while the agent is running or paused for a human, and terminal transitions remove Live View metadata.
+
+**TDD evidence:** same-session pause/resume, transient Live View metadata, private-value non-echo, stale handback rejection, cancellation while paused, private Stagehand variables, and mutually exclusive control are covered through public seams.
+
+**Automated verification evidence:**
+
+- `npm test` — passed; 37 tests across 10 files.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed; `/api/runs/[id]/resume` built successfully.
+- Tracked-secret scan and `git diff --check` — passed.
+
+**Remaining exit check:** complete one manual Live View takeover and confirm deterministic automation resumes with the unchanged Browserbase session ID. Progress remains 43% until this succeeds.
 
 ## Build log
 
@@ -132,3 +153,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 2 complete; implementation at 29% | `45d5a14`, 15 tests and full verification passed |
 | 2026-08-08 | Checkpoint 3 automated implementation pushed; progress remains 29% pending live connectivity | `75576d8`, 30 tests and full local verification passed |
 | 2026-08-08 | Checkpoint 3 complete; implementation at 43% | `02689d5`, live Browserbase session completed and full verification passed |
+| 2026-08-08 | Checkpoint 4 automated implementation pushed; progress remains 43% pending manual handoff | `2060bbb`, 37 tests and full local verification passed |
