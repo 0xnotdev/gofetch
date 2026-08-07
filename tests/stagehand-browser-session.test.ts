@@ -14,17 +14,39 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       goto: vi.fn().mockResolvedValue(undefined),
       url: vi.fn().mockReturnValue("https://accounts.example.test/billing"),
     };
-    const execute = vi.fn().mockResolvedValue({
-      success: true,
-      completed: true,
-      message: "Payment is required.",
-      actions: [],
-      output: {
+    const extract = vi
+      .fn()
+      .mockResolvedValueOnce({
+        kind: "act",
+        summary: "Continue through the account flow.",
+        action: "Click the Continue button.",
+      })
+      .mockResolvedValueOnce({
         kind: "payment_required",
         summary: "Payment is required.",
-      },
+      })
+      .mockResolvedValueOnce({
+        kind: "credential_obtained",
+        summary: "Credential obtained without exposing its value.",
+        credential: {
+          credentialType: "api_key",
+          credential: "secret-example-1234",
+          sourceUrl: "https://accounts.example.test/settings/keys",
+          usageNote: "Use the documented Authorization header.",
+          validationStatus: "not_validated",
+          validationNote: "No harmless official check was available.",
+        },
+      });
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Clicked Continue.",
+      actionDescription: "Click the Continue button.",
+      actions: [],
     });
-    const stagehand: StagehandAdapter = {
+    const agent = vi.fn(() => {
+      throw new Error("The hosted primitive loop must not use experimental agent features.");
+    });
+    const stagehand = ({
       browserbaseSessionID: "bb-session-1",
       browserbaseDebugURL: "https://www.browserbase.com/live/bb-session-1",
       init: vi.fn().mockResolvedValue(undefined),
@@ -32,8 +54,10 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       context: {
         pages: vi.fn().mockReturnValue([page]),
       },
-      agent: vi.fn().mockReturnValue({ execute }),
-    };
+      extract,
+      act,
+      agent,
+    } as unknown) as StagehandAdapter;
     const StagehandFake = (class {
       constructor(options: StagehandAdapterOptions) {
         receivedOptions = options;
@@ -42,6 +66,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     } as unknown) as StagehandAdapterConstructor;
     const factory = new BrowserbaseStagehandSessionFactory({
       apiKey: "browserbase-secret",
+      model: "google/gemini-2.5-flash",
       stagehandConstructor: StagehandFake,
     });
     const signal = new AbortController().signal;
@@ -60,29 +85,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         officialSources: ["https://accounts.example.test/docs"],
       },
       signal,
-      {
-        value: "123456",
-        description: "The user's private one-time code",
-      },
     );
-    execute.mockResolvedValueOnce({
-      success: true,
-      completed: true,
-      message: "Credential obtained.",
-      actions: [],
-      output: {
-        kind: "credential_obtained",
-        summary: "Credential obtained without exposing its value.",
-        credential: {
-          credentialType: "api_key",
-          credential: "secret-example-1234",
-          sourceUrl: "https://accounts.example.test/settings/keys",
-          usageNote: "Use the documented Authorization header.",
-          validationStatus: "not_validated",
-          validationNote: "No harmless official check was available.",
-        },
-      },
-    });
     const credentialObservation = await session.execute(
       {
         appName: "Any Service",
@@ -101,7 +104,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       waitForCaptchaSolves: false,
       logInferenceToFile: false,
       verbose: 0,
-      experimental: true,
+      experimental: false,
       browserbaseSessionCreateParams: {
         keepAlive: false,
         timeout: 720,
@@ -120,26 +123,12 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       "https://accounts.example.test/register",
       { waitUntil: "domcontentloaded", timeoutMs: 45_000 },
     );
-    expect(stagehand.agent).toHaveBeenCalledWith({ mode: "dom" });
-    expect(execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        maxSteps: 12,
-        signal,
-        useSearch: false,
-        excludeTools: ["search", "goto", "navback"],
-        instruction: expect.stringContaining("Any Service"),
-        output: expect.anything(),
-        callbacks: {
-          onStepFinish: expect.any(Function),
-        },
-        variables: {
-          humanInput: {
-            value: "123456",
-            description: "The user's private one-time code",
-          },
-        },
-      }),
+    expect(agent).not.toHaveBeenCalled();
+    expect(extract).toHaveBeenCalledWith(
+      expect.stringContaining("Any Service"),
+      expect.anything(),
     );
+    expect(act).toHaveBeenCalledWith("Click the Continue button.");
     expect(observation).toEqual({
       kind: "payment_required",
       summary: "Payment is required.",
@@ -217,6 +206,119 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     ).resolves.toBeUndefined();
     await expect(
       session.navigate("https://evil.example.test/register", signal),
+    ).rejects.toThrow("outside the verified domain policy");
+  });
+
+  it("keeps a private handback value out of the model instruction", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.example.test/verify"),
+    };
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Entered the one-time code.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-private-input",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-private-input",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      act,
+      extract: vi.fn().mockResolvedValue({
+        kind: "human_required",
+        summary: "Confirm the account in the browser.",
+        intervention: {
+          kind: "browser_takeover",
+          prompt: "Confirm the account.",
+          reason: "The confirmation requires human review.",
+          sensitive: true,
+        },
+      }),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const signal = new AbortController().signal;
+    const session = await factory.create(signal);
+    await session.setAllowedDomains(["accounts.example.test"]);
+
+    await session.execute(
+      {
+        appName: "Any Service",
+        planSummary: "Finish account verification.",
+        credentialTypes: ["api_key"],
+        officialSources: ["https://accounts.example.test/docs"],
+      },
+      signal,
+      { value: "654321", description: "The one-time verification code" },
+    );
+
+    expect(act).toHaveBeenNthCalledWith(
+      1,
+      expect.not.stringContaining("654321"),
+      {
+        variables: {
+          humanInput: {
+            value: "654321",
+            description: "The one-time verification code",
+          },
+        },
+      },
+    );
+  });
+
+  it("stops immediately when a semantic action leaves the verified domains", async () => {
+    let currentUrl = "https://accounts.example.test/register";
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn(() => currentUrl),
+    };
+    const stagehand = ({
+      browserbaseSessionID: "bb-domain-escape",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-domain-escape",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract: vi.fn().mockResolvedValue({
+        kind: "act",
+        summary: "Continue.",
+        action: "Click Continue.",
+      }),
+      act: vi.fn().mockImplementation(async () => {
+        currentUrl = "https://evil.example.test/phishing";
+        return { success: true, message: "Clicked." };
+      }),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const signal = new AbortController().signal;
+    const session = await factory.create(signal);
+    await session.setAllowedDomains(["accounts.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Find a credential.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://accounts.example.test/docs"],
+        },
+        signal,
+      ),
     ).rejects.toThrow("outside the verified domain policy");
   });
 });
