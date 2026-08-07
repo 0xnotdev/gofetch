@@ -49,7 +49,11 @@ export function createPostRunsHandler(dependencies: PostRunsDependencies = {}) {
 
       try {
         plan = await dependencies.buildPlan(parsed.data.query);
-      } catch {
+      } catch (error) {
+        console.error("[DEBUG-matrix-a71c] planning failure", {
+          name: error instanceof Error ? error.name : "UnknownError",
+          message: error instanceof Error ? error.message : "Non-error failure",
+        });
         return Response.json(
           {
             error: {
