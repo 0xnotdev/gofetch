@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoints 1–6 complete and pushed; Checkpoint 7 is ready to begin.
+**Current status:** Checkpoints 1–6 complete and pushed; Checkpoint 7 deployment preparation is pushed.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -205,9 +205,16 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Checkpoint 7 — Deployment and submission
 
-**Status:** ready to begin
+**Status:** in progress
 
-**Next action:** deploy the application, configure production secrets and limits, run hosted acceptance checks, finish architecture/submission documentation, and audit every scope acceptance criterion.
+**Delivered so far:**
+
+- Render single-process Node deployment blueprint with free-instance, health-check, Node-version, automatic-deploy, and secret-prompt configuration.
+- Architecture notes covering request flow, module seams, trust boundaries, lifecycle limits, hosting rationale, and production-expansion tradeoffs.
+- README deployment path and production environment guidance.
+- Deployment preparation commit `c95cf18` passed typecheck, lint, production build, and `git diff --check`.
+
+**Next action:** create the Render Blueprint service, configure the production Browserbase secret, run hosted acceptance checks, finish submission documentation, and audit every scope acceptance criterion.
 
 ## Build log
 
@@ -222,3 +229,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 4 complete; implementation at 57% | `db2192e`, live human takeover and unchanged-session resume verified |
 | 2026-08-08 | Checkpoint 5 complete; implementation at 71% | `e5147a0`, 45 tests and full verification passed |
 | 2026-08-08 | Checkpoint 6 complete; implementation at 86% | `7ca2a04`, 56 tests, live Model Gateway planning, API plan, and browser smoke passed |
+| 2026-08-08 | Checkpoint 7 deployment preparation pushed; progress remains 86% | `c95cf18`, Render Blueprint, architecture notes, and local deployment build passed |
