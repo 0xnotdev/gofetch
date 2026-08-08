@@ -379,6 +379,24 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
 - A production build and deployed handback retest remain required before this can count as the final credential-retrieval acceptance.
 
+### Verified sibling-domain handback continuation
+
+**Status:** implementation complete; deployed retest pending
+
+**Reported symptom:** after successful login, the browser returned from the identity flow to an official dashboard subdomain and stopped at the exact-host domain guard.
+
+**Delivered:**
+
+- Replaced exact-host-only continuation with a registrable-domain policy derived from verified official HTTPS sources, using the public suffix list (`tldts`) rather than a fragile last-two-label heuristic.
+- This permits the normal `docs → dashboard` or `account → console` transition for the same verified service, while still rejecting different registrable domains, credentials in URLs, and insecure navigation.
+- External identity-provider pages remain human handoffs; the policy does not let the agent enter the user's login details.
+
+**Verification evidence:**
+
+- New regression covers a verified sibling dashboard and a separate-domain action escape.
+- `npm test` — passed; 84 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -402,3 +420,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Fresh-account deployment diagnosis corrected | Direct remote session and deployed NASA planning succeeded after Render secret verification; prior 402 was an old-worker rollout race, not an entitlement failure |
 | 2026-08-08 | Generic direct-API-key path corrected and deployed | `b0c7c79`; 73 tests and production build passed; deployed Composio now reaches real shared-browser human handoff |
 | 2026-08-08 | Resumed-session recovery added | `73487eb` plus a pending follow-up; 83 tests, typecheck, lint, production build, and diff check passed; a transient post-handback browser failure retries in the same session, preserves any inline value, and double failures are safely diagnosable |
+| 2026-08-08 | Verified sibling-domain continuation added | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; official docs-to-dashboard/account transitions continue after human login while unrelated domains remain blocked |

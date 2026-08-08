@@ -1,4 +1,5 @@
 import { Stagehand } from "@browserbasehq/stagehand";
+import { getDomain } from "tldts";
 import { z } from "zod";
 
 import type {
@@ -187,6 +188,7 @@ class StagehandBrowserSession implements BrowserSession {
   readonly liveViewUrl: string;
   readonly #stagehand: StagehandAdapter;
   #allowedDomains = new Set<string>();
+  #allowedSiteRoots = new Set<string>();
 
   constructor(
     stagehand: StagehandAdapter,
@@ -200,6 +202,12 @@ class StagehandBrowserSession implements BrowserSession {
 
   async setAllowedDomains(domains: string[]): Promise<void> {
     this.#allowedDomains = new Set(domains);
+    this.#allowedSiteRoots = new Set(
+      domains.flatMap((domain) => {
+        const root = registrableDomain(domain);
+        return root ? [root] : [];
+      }),
+    );
   }
 
   async navigate(url: string, signal: AbortSignal): Promise<void> {
@@ -397,7 +405,7 @@ class StagehandBrowserSession implements BrowserSession {
       url.protocol !== "https:" ||
       url.username ||
       url.password ||
-      !this.#allowedDomains.has(url.hostname)
+      !this.#isAllowedHostname(url.hostname)
     ) {
       throw new Error("Browser navigation moved outside the verified domain policy.");
     }
@@ -409,7 +417,19 @@ class StagehandBrowserSession implements BrowserSession {
       throw new Error("Browser navigation moved outside the verified domain policy.");
     }
     this.#allowedDomains.add(url.hostname);
+    const root = registrableDomain(url.hostname);
+    if (root) this.#allowedSiteRoots.add(root);
   }
+
+  #isAllowedHostname(hostname: string): boolean {
+    if (this.#allowedDomains.has(hostname)) return true;
+    const root = registrableDomain(hostname);
+    return root !== null && this.#allowedSiteRoots.has(root);
+  }
+}
+
+function registrableDomain(hostname: string): string | null {
+  return getDomain(hostname, { allowPrivateDomains: true });
 }
 
 function buildStepInstruction(

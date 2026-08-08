@@ -207,8 +207,55 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       session.navigate("https://accounts.example.test/register", signal),
     ).resolves.toBeUndefined();
     await expect(
-      session.navigate("https://evil.example.test/register", signal),
+      session.navigate("https://evil.attacker.test/register", signal),
     ).rejects.toThrow("outside the verified domain policy");
+  });
+
+  it("allows a verified service's sibling dashboard after user login", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://dashboard.example.test/settings/keys"),
+    };
+    const stagehand = ({
+      browserbaseSessionID: "bb-sibling-dashboard",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-sibling-dashboard",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract: vi.fn().mockResolvedValue({
+        kind: "completed",
+        summary: "Reached the credential settings.",
+      }),
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const signal = new AbortController().signal;
+    const session = await factory.create(signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Find the API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api"],
+        },
+        signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "completed",
+      currentUrl: "https://dashboard.example.test/settings/keys",
+    });
   });
 
   it("keeps a private handback value out of the model instruction", async () => {
@@ -294,7 +341,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         action: "Click Continue.",
       }),
       act: vi.fn().mockImplementation(async () => {
-        currentUrl = "https://evil.example.test/phishing";
+        currentUrl = "https://evil.attacker.test/phishing";
         return { success: true, message: "Clicked." };
       }),
     } as unknown) as StagehandAdapter;
