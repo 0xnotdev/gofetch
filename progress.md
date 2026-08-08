@@ -799,6 +799,26 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` - passed; 104 tests across 14 files.
 - `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
+### Final repository presentation and Loom demo
+
+**Status:** complete and pushed
+
+**Documentation commit:** `02aaa67`
+
+**Delivered:**
+
+- Added the official Loom animated thumbnail and a prominent demo link at the top of the GitHub README.
+- Reorganized the README around reviewer outcomes: live app, demo, workflow, verified acceptance, safety, stack, setup, deployment, and limitations.
+- Updated `submission.md` from its obsolete pending/71-test state to the current completed audit with 104 passing tests and user-verified Twilio and Composio workflows.
+- Corrected top-level progress from 86%/6-of-7 to 100%/7-of-7 and aligned lifecycle documentation with the deployed quota behavior.
+- Verified the Loom link and thumbnail through Loom's official oEmbed metadata.
+
+**Verification evidence:**
+
+- `npm test` — passed; 104 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
+- Every relative README documentation and deployment target exists in the repository.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -840,3 +860,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Focused verified account-route discovery added | `e8ae074`; exact hosted docs-only planning failure corrected generically; hosted Composio selected `/auth` and reached HITL |
 | 2026-08-08 | Live View target-bound popup handoff added | `283d523`; exact docs-visible/identity-popup mismatch corrected and hosted screenshot-level verification passed |
 | 2026-08-08 | Non-replenishing process session cap removed | `11f676e`; fourth sequential run no longer fails locally; 104 tests and full production verification pass |
+| 2026-08-08 | Final repository presentation and Loom demo added | `02aaa67`; animated demo preview, reviewer-first README, current submission audit, and 100% completion status pushed |
