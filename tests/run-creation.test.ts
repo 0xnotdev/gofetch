@@ -159,4 +159,31 @@ describe("POST /api/runs", () => {
       },
     });
   });
+
+  it("reports unavailable remote-browser minutes as a precise retryable blocker", async () => {
+    const handler = createPostRunsHandler({
+      buildPlan: async () => {
+        throw new Error(
+          "API error (402): free plan browser minutes limit reached",
+        );
+      },
+    });
+
+    const response = await handler(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "Northstar Tasks" }),
+      }),
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "browser_quota_unavailable",
+        message:
+          "The configured remote-browser project cannot start a session because its browser-minute allowance is unavailable. Enable browser minutes or use a project with available browser access, then retry.",
+      },
+    });
+  });
 });

@@ -16,6 +16,33 @@ function invalidRequest(): Response {
   );
 }
 
+function planningFailure(error: unknown): Response {
+  const message = error instanceof Error ? error.message : "";
+
+  if (/\b402\b/i.test(message) && /browser minutes?/i.test(message)) {
+    return Response.json(
+      {
+        error: {
+          code: "browser_quota_unavailable",
+          message:
+            "The configured remote-browser project cannot start a session because its browser-minute allowance is unavailable. Enable browser minutes or use a project with available browser access, then retry.",
+        },
+      },
+      { status: 503 },
+    );
+  }
+
+  return Response.json(
+    {
+      error: {
+        code: "research_failed",
+        message: "GoFetch could not complete official-source research for this run.",
+      },
+    },
+    { status: 502 },
+  );
+}
+
 interface PostRunsDependencies {
   buildPlan?: (query: string) => Promise<CredentialPlan>;
   saveRun?: (run: PlannedRunSnapshot) => void;
@@ -49,16 +76,8 @@ export function createPostRunsHandler(dependencies: PostRunsDependencies = {}) {
 
       try {
         plan = await dependencies.buildPlan(parsed.data.query);
-      } catch {
-        return Response.json(
-          {
-            error: {
-              code: "research_failed",
-              message: "GoFetch could not complete official-source research for this run.",
-            },
-          },
-          { status: 502 },
-        );
+      } catch (error) {
+        return planningFailure(error);
       }
 
       run.plan = plan;

@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoint 7 remains open. The repaired runtime and diverse non-signup matrix are verified; the final deployed signup pause/resume run is blocked by the Browserbase project having consumed 77 of the free plan's 60 browser minutes.
+**Current status:** Checkpoint 7 remains open. The repaired runtime and diverse non-signup matrix are verified; the final deployed signup pause/resume run is blocked because Browserbase rejects browser allocation on both the previously exhausted project and a newly created, zero-usage free project.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -345,6 +345,13 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm audit --audit-level=high` — passed; 17 documented low-severity transitive AI SDK advisories remain.
 - The final deployed third-party signup pause/resume criterion stays unchecked until the Browserbase quota resets or the project is upgraded. A technical/quota failure is not counted as a target blocker or success.
 
+### Fresh Browserbase-account verification
+
+- A newly created Browserbase account was configured in the deployed Render service after its API key successfully returned the newly created `Production project`.
+- The new project's reported usage was `0` browser minutes and `0` proxy bytes, but its first deployed `Sentry API` planning attempt still received Browserbase HTTP 402: free-plan browser-minute limit reached.
+- Added a generic, provider-safe `browser_quota_unavailable` response (HTTP 503) for this precise condition. The UI now explains that browser access must be enabled or a project with available minutes selected, rather than mislabelling it as an official-source research failure.
+- Target-specific work did not run: no signup page was opened, no user identity data was requested, and this does not satisfy the remaining human-pause/resume acceptance criterion.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -364,3 +371,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Stagehand v3 browser runtime fixed; assignment remains at 100% | `7fa8a84`, 63 tests, live local and hosted Twilio browser execution no longer fail technically |
 | 2026-08-08 | Checkpoint 7 reopened; implementation returns to 86% | `c70a2c3`, false `blocked` acceptance corrected; 65 tests and production build passed; hosted matrix pending |
 | 2026-08-08 | Hosted matrix expanded; Checkpoint 7 remains at 86% | `8ec5c88`, `65f311d`, `6a720aa`; 71 tests, diverse hosted cases, and quota evidence recorded; real signup resume pending quota reset |
+| 2026-08-08 | Fresh-account quota diagnosis and precise deployed error handling | New zero-usage project also returned Browserbase HTTP 402; targeted route test plus typecheck, lint, and production build passed; real signup resume still pending browser access |
