@@ -18,9 +18,9 @@ GoFetch accepts one free-text input containing either an app name or clear requi
 
 Checkpoint 7 is currently reopened while the repaired browser runtime is exercised against the full hosted matrix. The results below are historical evidence, not the final acceptance claim.
 
-The final local quality gate passed on 2026-08-08:
+The latest local quality gate passed on 2026-08-08:
 
-- 63 Vitest tests across 13 files;
+- 71 Vitest tests across 14 files;
 - TypeScript type checking;
 - ESLint;
 - Next.js production build;
@@ -35,8 +35,11 @@ The final hosted application was tested after Render reported commit `fee3f12` l
 | `a project-management app with a free API` | Dynamically selected Project Manager, explained why, and returned `needs_clarification`/insufficient evidence when the fetched official documentation did not expose a credential. |
 | `NASA Open APIs` | Dynamically selected NASA APIs and returned the official `DEMO_KEY` as `obtained_unverified`, with copy control, official-source links, and documented rate limits. |
 | `twilio api` | Resolved Twilio and returned a signup-required plan, but the browser result was later found to contain a Model Gateway configuration error. This row is not accepted as a passing signup run. |
+| `an API for something useful` | Returned one focused clarification question without silently selecting an app. |
 
 The same-session human handoff was verified separately with Browserbase session `d2783f59-7f63-4784-9f50-d95cdbfca7aa`: automation paused, a human entered `gofetch-human-check` in Live View, automation resumed with the unchanged session ID, and the session closed as `COMPLETED`.
+
+The final third-party signup pause/resume acceptance is still pending. Browserbase project usage reached 77 browser minutes during diagnosis, exceeding the free plan's 60-minute allowance; this external quota failure is not counted as a target blocker or passing result.
 
 ## Acceptance audit
 

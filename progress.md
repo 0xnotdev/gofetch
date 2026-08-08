@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoint 7 reopened. The Model Gateway browser-runtime defect is fixed and pushed; diverse hosted input and real signup pause/resume acceptance are pending.
+**Current status:** Checkpoint 7 remains open. The repaired runtime and diverse non-signup matrix are verified; the final deployed signup pause/resume run is blocked by the Browserbase project having consumed 77 of the free plan's 60 browser minutes.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -314,6 +314,37 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
 - Hosted multi-input and real signup pause/resume acceptance remain required before Checkpoint 7 returns to complete.
 
+### Hosted input-matrix and quota hardening
+
+**Status:** implementation complete; final live signup acceptance blocked by provider quota
+
+**Implementation commits:** `8ec5c88`, `65f311d`, `6a720aa`
+
+**Delivered:**
+
+- Treats a page that is still rendering as a retryable browser step rather than a target blocker.
+- Accepts signup, registration, and start-free URLs only when they appear verbatim in fetched official evidence.
+- Generically discovers documented account-creation links from official HTML; no app-specific selectors or routes.
+- Trusts only the immediate secure redirect reached from a verified signup URL, then resumes exact-host enforcement after every action.
+- Adds a 45-second timeout to each structured browser extraction so one provider call cannot consume the entire 12-minute session.
+- Retries the full planning pipeline once with fresh dependencies after a transient provider failure.
+- Repairs `check:handoff` for the installed Stagehand v3 API while retaining exact-domain checks.
+
+**Hosted matrix evidence:**
+
+- `NASA Open APIs` selected NASA APIs from three official sources and returned the documented public demo credential as `obtained_unverified`.
+- `an API for something useful` returned one focused clarification question with no selected app.
+- `a project-management app with a free API` dynamically selected ProjectManager.com and returned a precise insufficient-evidence reason from the retrieved official source.
+- `Twilio API` preserved the direct target and produced a signup-required plan from three official sources. Earlier browser attempts exposed and drove the generic fixes above; they do not count as completed signup acceptance.
+- Browserbase project usage reported `77` browser minutes after the live diagnosis campaign. This exceeds the documented 60-minute free allowance, and subsequent unrelated `Resend API` planning exhausted its bounded retry and returned HTTP 502.
+
+**Verification evidence:**
+
+- `npm test` — passed; 71 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
+- `npm audit --audit-level=high` — passed; 17 documented low-severity transitive AI SDK advisories remain.
+- The final deployed third-party signup pause/resume criterion stays unchecked until the Browserbase quota resets or the project is upgraded. A technical/quota failure is not counted as a target blocker or success.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -332,3 +363,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Twilio provider-schema regression fixed; assignment remains at 100% | `3c97c86`, 62 tests, local provider repro and hosted Twilio acceptance passed |
 | 2026-08-08 | Stagehand v3 browser runtime fixed; assignment remains at 100% | `7fa8a84`, 63 tests, live local and hosted Twilio browser execution no longer fail technically |
 | 2026-08-08 | Checkpoint 7 reopened; implementation returns to 86% | `c70a2c3`, false `blocked` acceptance corrected; 65 tests and production build passed; hosted matrix pending |
+| 2026-08-08 | Hosted matrix expanded; Checkpoint 7 remains at 86% | `8ec5c88`, `65f311d`, `6a720aa`; 71 tests, diverse hosted cases, and quota evidence recorded; real signup resume pending quota reset |
