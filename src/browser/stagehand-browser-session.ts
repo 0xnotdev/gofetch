@@ -84,6 +84,7 @@ interface StagehandPageAdapter {
     options: { waitUntil: "domcontentloaded"; timeoutMs: number },
   ): Promise<unknown>;
   url(): string;
+  targetId?(): string;
   waitForTimeout(timeoutMs: number): Promise<void>;
   sendCDP?<T = unknown>(method: string, params?: object): Promise<T>;
   evaluate?<T>(pageFunction: () => T | Promise<T>): Promise<T>;
@@ -197,6 +198,7 @@ class StagehandBrowserSession implements BrowserSession {
   readonly id: string;
   readonly liveViewUrl: string;
   readonly #stagehand: StagehandAdapter;
+  readonly #liveViewTargetId: string | null;
   #allowedDomains = new Set<string>();
   #allowedSiteRoots = new Set<string>();
 
@@ -208,6 +210,7 @@ class StagehandBrowserSession implements BrowserSession {
     this.#stagehand = stagehand;
     this.id = sessionId;
     this.liveViewUrl = liveViewUrl;
+    this.#liveViewTargetId = parseLiveViewTargetId(liveViewUrl);
   }
 
   async setAllowedDomains(domains: string[]): Promise<void> {
@@ -578,8 +581,41 @@ class StagehandBrowserSession implements BrowserSession {
   async #externalIdentityHandoff(
     page: StagehandPageAdapter,
   ): Promise<BrowserObservation> {
-    await this.#focusForHumanHandoff(page);
-    return externalIdentityHandoff(page.url());
+    const identityUrl = page.url();
+    const liveViewPage = this.#liveViewPage();
+    let handoffPage = page;
+
+    if (liveViewPage && liveViewPage !== page) {
+      const previousLiveViewUrl = liveViewPage.url();
+      try {
+        await liveViewPage.goto(identityUrl, {
+          waitUntil: "domcontentloaded",
+          timeoutMs: 45_000,
+        });
+      } catch {
+        // A cross-site identity navigation can abort while still committing.
+        // Accept it only when the page bound to Live View actually moved.
+      }
+      if (liveViewPage.url() === previousLiveViewUrl) {
+        return {
+          kind: "blocked",
+          summary:
+            "The identity flow opened outside the shared Live View and could not be moved into the visible browser page.",
+          currentUrl: previousLiveViewUrl,
+        };
+      }
+      handoffPage = liveViewPage;
+    }
+
+    await this.#focusForHumanHandoff(handoffPage);
+    return externalIdentityHandoff(handoffPage.url());
+  }
+
+  #liveViewPage(): StagehandPageAdapter | undefined {
+    if (!this.#liveViewTargetId) return undefined;
+    return this.#stagehand.context
+      .pages()
+      .find((page) => page.targetId?.() === this.#liveViewTargetId);
   }
 
   async #focusForHumanHandoff(page: StagehandPageAdapter): Promise<void> {
@@ -1101,6 +1137,22 @@ function externalIdentityHandoff(currentUrl: string): BrowserObservation {
       sensitive: true,
     },
   };
+}
+
+function parseLiveViewTargetId(liveViewUrl: string): string | null {
+  try {
+    const url = new URL(liveViewUrl);
+    const candidates = [url.searchParams.get("wss"), liveViewUrl].filter(
+      (candidate): candidate is string => Boolean(candidate),
+    );
+    for (const candidate of candidates) {
+      const match = candidate.match(/\/devtools\/page\/([^/?#]+)/i);
+      if (match?.[1]) return decodeURIComponent(match[1]);
+    }
+  } catch {
+    // Older Live View URLs do not expose a page target and keep focus fallback.
+  }
+  return null;
 }
 
 function throwIfAborted(signal: AbortSignal): void {

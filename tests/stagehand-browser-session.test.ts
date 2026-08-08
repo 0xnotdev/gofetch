@@ -972,6 +972,77 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(identityPage.sendCDP).toHaveBeenCalledWith("Page.bringToFront");
   });
 
+  it("moves a popup identity flow into the page displayed by Live View before handoff", async () => {
+    const liveTargetId = "LIVE_DOCS_TARGET";
+    const identityUrl = "https://accounts.google.com/signin/oauth";
+    let visibleUrl =
+      "https://docs.example.test/docs/quickstart";
+    const visibleDocsPage = {
+      targetId: vi.fn().mockReturnValue(liveTargetId),
+      goto: vi.fn().mockImplementation(async (url: string) => {
+        visibleUrl = url;
+      }),
+      url: vi.fn(() => visibleUrl),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      sendCDP: vi.fn().mockResolvedValue(undefined),
+    };
+    const hiddenIdentityPage = {
+      targetId: vi.fn().mockReturnValue("HIDDEN_IDENTITY_TARGET"),
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue(identityUrl),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      sendCDP: vi.fn().mockResolvedValue(undefined),
+    };
+    const setActivePage = vi.fn();
+    const debugTargetPath = encodeURIComponent(
+      `connect.browserbase.com/debug/session/devtools/page/${liveTargetId}?debug=true`,
+    );
+    const stagehand = ({
+      browserbaseSessionID: "bb-popup-login",
+      browserbaseDebugURL:
+        `https://www.browserbase.com/devtools-fullscreen-compiled/index.html?wss=${debugTargetPath}`,
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: {
+        pages: vi.fn().mockReturnValue([visibleDocsPage, hiddenIdentityPage]),
+        activePage: vi.fn().mockReturnValue(hiddenIdentityPage),
+        setActivePage,
+      },
+      extract: vi.fn(),
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Sign in and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/docs/quickstart"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      currentUrl: identityUrl,
+    });
+    expect(visibleDocsPage.goto).toHaveBeenCalledWith(identityUrl, {
+      waitUntil: "domcontentloaded",
+      timeoutMs: 45_000,
+    });
+    expect(setActivePage).toHaveBeenLastCalledWith(visibleDocsPage);
+  });
+
   it("uses the surrounding credential modal when the key field has no local label", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
