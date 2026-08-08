@@ -596,6 +596,69 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(extract).toHaveBeenCalledTimes(6);
   });
 
+  it("returns a newly visible key from the DOM when structured extraction remains malformed", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          value: "ak_live_example_1234567890",
+          context: "Your new API key — copy this key now",
+        }),
+    };
+    const extract = vi.fn().mockResolvedValue({ malformed: true });
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Clicked Create API Key.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-visible-key-fallback",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-visible-key-fallback",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: {
+        credentialType: "api_key",
+        credential: "ak_live_example_1234567890",
+        sourceUrl: "https://dashboard.example.test/settings/api-keys",
+        validationStatus: "not_validated",
+      },
+    });
+    expect(act).toHaveBeenCalledOnce();
+  });
+
   it("continues through official navigation when human action is claimed on a documentation page", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

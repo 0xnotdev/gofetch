@@ -458,6 +458,34 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 87 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Model-independent visible credential retrieval
+
+**Status:** implementation complete; deployed end-to-end retest pending
+
+**Reported symptom:** the agent reached the authenticated API-key page and clicked Create API Key, but repeated schema-invalid model observations prevented it from returning the newly displayed key.
+
+**Root causes:**
+
+- The only credential extraction path depended on the model returning a strict nested credential object, even though the one-time secret was already visible in the browser DOM.
+- Final credential-source validation accepted only exact researched hostnames, while normal account flows move from an official docs hostname to a sibling dashboard hostname on the same verified service.
+
+**Delivered:**
+
+- After a create/generate/reveal/copy credential action—or a malformed-output recovery action—scans visible readonly inputs, textareas, code blocks, preformatted blocks, key/token test IDs, and visible text nodes for an unmasked credential in credential-labeled context.
+- Keeps the raw value out of model prompts and inference; extraction occurs directly inside the active page and returns only through the existing in-memory credential result.
+- Rejects masked, whitespace-containing, low-entropy, malformed, oversized, or weakly contextual values.
+- Uses a bounded three-scan post-click window so asynchronously rendered one-time keys are captured without clicking Create twice.
+- Accepts credential evidence from a same-service sibling dashboard using public-suffix-aware registrable domains while continuing to reject unrelated domains and shared-host tenants.
+- Returns DOM-read credentials honestly as `obtained_unverified` until a harmless official validation request is actually performed.
+
+**Verification evidence:**
+
+- Both exact seams were observed failing before the fix: visible-key DOM fallback returned `blocked`, and the sibling dashboard source was rejected.
+- Regression verifies a delayed one-time key is returned after one Create action even while every structured observation remains malformed.
+- Regression verifies a sibling official dashboard source is accepted and an unrelated source remains rejected.
+- `npm test` — passed; 89 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -485,3 +513,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | External-identity redirect handoff corrected | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; initial Google identity redirects pause for the human rather than entering the agent policy |
 | 2026-08-08 | Authenticated-dashboard structured recovery added | Pending commit; 86 tests, typecheck, lint, production build, and diff check passed; repeated malformed post-login observations now trigger bounded safe progress instead of immediate termination |
 | 2026-08-08 | Security-verification handoff added | Pending commit; 87 tests, typecheck, lint, production build, and diff check passed; Cloudflare/CAPTCHA/bot checks now pause the same live session for human completion |
+| 2026-08-08 | Model-independent visible credential retrieval added | Pending commit; 89 tests, typecheck, lint, production build, and diff check passed; a newly rendered key can be returned directly from the verified page after one Create action without relying on model schema output |

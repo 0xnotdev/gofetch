@@ -58,6 +58,22 @@ describe("credential results", () => {
     expect(result.validationNote).toContain("No harmless official check");
   });
 
+  it("accepts a credential from the verified service's sibling dashboard", () => {
+    const result = createCredentialResult(plan, {
+      credentialType: "api_key",
+      credential: "secret-example-1234",
+      sourceUrl: "https://dashboard.example.test/settings/keys",
+      usageNote: "Use the documented Authorization header.",
+      validationStatus: "not_validated",
+      validationNote: "No harmless official check was available.",
+    });
+
+    expect(result).toMatchObject({
+      status: "obtained_unverified",
+      sourceUrl: "https://dashboard.example.test/settings/keys",
+    });
+  });
+
   it("rejects credentials reported from outside researched official domains", () => {
     expect(() =>
       createCredentialResult(plan, {
