@@ -182,10 +182,16 @@ export class BrowserRunCoordinator {
 
   async run(plan: CredentialPlan): Promise<BrowserRunResult> {
     if (this.#activeRun) {
-      return {
-        status: "technical_failure",
-        reason: "Another browser run is already active.",
-      };
+      if (this.#activeRun.phase === "human") {
+        const abandonedRun = this.#activeRun;
+        abandonedRun.controller.abort({ code: "replaced" });
+        await this.#finish(abandonedRun);
+      } else {
+        return {
+          status: "technical_failure",
+          reason: "Another browser run is already active.",
+        };
+      }
     }
 
     if (this.#sessionStarts >= this.#maxSessionStarts) {

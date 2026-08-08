@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. The deterministic pre-login handoff passes on the deployed service; Checkpoint 7 remains open while the multi-page generated-key modal fix is deployed and revalidated.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the active-page, verified-account-route, and abandoned-run replacement corrections are deployed and revalidated.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -673,6 +673,33 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` - passed; 97 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
+### Active-page truth, account-route priority, and paused-run replacement
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptoms:** the human handoff claimed an external identity provider while Live View visibly showed documentation, and a retry then ended with `Another browser run is already active.`
+
+**Root causes:**
+
+- GoFetch guessed the active page from browser tab creation order instead of using Stagehand's `context.activePage()` primitive. A newer stale Google tab could therefore override the documentation page actually shown in Live View.
+- When the resolver selected three documentation URLs, a related verified login/auth/dashboard search result was appended after the three-source cap and discarded, causing browser work to start on documentation despite verified account-route evidence.
+- A run paused for human action retained the process-wide active slot until explicit cancellation or timeout, so starting over from another tab was rejected as a concurrent agent run.
+
+**Delivered:**
+
+- Uses Stagehand's actual active page for human-gate decisions, domain checks, actions, and credential scans; newest-page selection remains only a compatibility fallback.
+- Reserves one of the three fetched official-source slots for the strongest related verified account route while retaining primary API documentation evidence.
+- Starting a new run closes and replaces an abandoned human-paused session; a genuinely running agent remains protected from concurrent execution.
+- Preserves same-session handback, external-identity safety, session quotas, and generic app-independent behavior.
+
+**Verification evidence:**
+
+- The active-docs plus stale-Google regression was observed returning the false external-identity handoff; it now inspects the documentation page actually reported by `activePage()`.
+- The three-documents plus verified-auth-route regression was observed dropping the auth route; it now fetches and selects that verified account route.
+- The paused-run replacement regression was observed returning `Another browser run is already active`; it now closes the abandoned session and starts the replacement, while the existing concurrent-agent rejection remains green.
+- `npm test` - passed; 100 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -709,3 +736,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Visible-modal-before-recovery ordering corrected | Pending commit; screenshot-equivalent malformed-output/visible-key repro corrected; 94 tests and full production verification pass |
 | 2026-08-08 | Immediate pre-login handoff added and deployed | `9674044`; hosted Composio reached the human takeover in 15.2 seconds, the same-session regression resumes to a credential, and 95 tests plus full production verification pass |
 | 2026-08-08 | Multi-page generated-key modal capture added | `ddfd6f3`; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
+| 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | Pending commit; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |

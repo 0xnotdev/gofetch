@@ -851,6 +851,67 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(dashboardPage.evaluate).toHaveBeenCalled();
   });
 
+  it("uses the runtime active page instead of a newer stale identity tab", async () => {
+    const docsPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://docs.example.test/reference/authentication"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(false),
+    };
+    const staleIdentityPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.google.com/signin"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(true),
+    };
+    const extract = vi.fn().mockResolvedValue({
+      kind: "completed",
+      summary: "The active documentation page was inspected.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-active-docs-page",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-active-docs-page",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: {
+        pages: vi.fn().mockReturnValue([docsPage, staleIdentityPage]),
+        activePage: vi.fn().mockReturnValue(docsPage),
+      },
+      extract,
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Find the official account flow from documentation.",
+          credentialTypes: ["api_key"],
+          officialSources: [
+            "https://docs.example.test/reference/authentication",
+          ],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "completed",
+      currentUrl: "https://docs.example.test/reference/authentication",
+    });
+    expect(extract).toHaveBeenCalledOnce();
+  });
+
   it("uses the surrounding credential modal when the key field has no local label", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

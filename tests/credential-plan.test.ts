@@ -173,6 +173,65 @@ describe("buildCredentialPlan", () => {
     expect(plan.signupUrl).toBe(accountUrl);
   });
 
+  it("keeps a related account route when the resolver already selected three documentation pages", async () => {
+    const documentationUrls = [
+      "https://docs.example.test/reference/authentication",
+      "https://docs.example.test/guides/api-keys",
+      "https://docs.example.test/reference/projects",
+    ];
+    const accountUrl = "https://www.example.test/auth";
+    const fetch = vi.fn(async (url: string) => ({
+      url,
+      content:
+        url === accountUrl
+          ? '<a href="/login">Log in</a>'
+          : "API keys are managed in the authenticated account dashboard.",
+    }));
+
+    const plan = await buildCredentialPlan("Example Platform", {
+      research: {
+        async search() {
+          return [
+            ...documentationUrls.map((url) => ({
+              title: "Example API documentation",
+              url,
+            })),
+            { title: "Example account login", url: accountUrl },
+          ];
+        },
+        fetch,
+      },
+      planner: {
+        async resolveTarget() {
+          return {
+            inputMode: "direct",
+            appName: "Example Platform",
+            selectionReason: "The user named it.",
+            clarificationQuestion: null,
+            requiresConfirmation: false,
+            officialSourceUrls: documentationUrls,
+          };
+        },
+        async classifyPath({ documents }) {
+          const hasAccountRoute = documents.some(
+            (document) => document.url === accountUrl,
+          );
+          return {
+            path: "signup_required",
+            credentialTypes: ["api_key"],
+            summary: "Use the account dashboard to create an API key.",
+            signupUrl: hasAccountRoute ? accountUrl : documentationUrls[0],
+            blocker: null,
+          };
+        },
+      },
+    });
+
+    expect(fetch).toHaveBeenCalledWith(accountUrl);
+    expect(plan.signupUrl).toBe(accountUrl);
+    expect(plan.officialSources).toContain(accountUrl);
+  });
+
   it("requires confirmation before acting on an app selected from requirements", async () => {
     const plan = await buildCredentialPlan("an email delivery app with a free API", {
       research: {

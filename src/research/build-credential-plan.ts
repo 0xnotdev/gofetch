@@ -83,9 +83,16 @@ async function buildCredentialPlanWithoutCleanup(
   const selectedOfficialSources = target.officialSourceUrls
     .filter((url) => resultUrls.has(url) && new URL(url).protocol === "https:")
     .slice(0, 3);
+  const relatedAccountRoutes = relatedOfficialAccountRoutes(
+    searchResults,
+    selectedOfficialSources,
+  );
   const officialSources = [
-    ...selectedOfficialSources,
-    ...relatedOfficialAccountRoutes(searchResults, selectedOfficialSources),
+    ...new Set([
+      ...selectedOfficialSources.slice(0, 1),
+      ...relatedAccountRoutes.slice(0, 1),
+      ...selectedOfficialSources.slice(1),
+    ]),
   ].slice(0, 3);
 
   if (officialSources.length === 0) {

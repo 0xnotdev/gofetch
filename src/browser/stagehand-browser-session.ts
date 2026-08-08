@@ -106,6 +106,7 @@ export interface StagehandAdapter {
   init(): Promise<void>;
   close(options: { force: boolean }): Promise<void>;
   context: {
+    activePage?(): StagehandPageAdapter | undefined;
     pages(): StagehandPageAdapter[];
   };
   extract(
@@ -568,7 +569,9 @@ class StagehandBrowserSession implements BrowserSession {
 
   #page(): StagehandPageAdapter {
     const pages = this.#stagehand.context.pages();
+    const activePage = this.#stagehand.context.activePage?.();
     const page =
+      (activePage?.url() !== "about:blank" ? activePage : undefined) ??
       [...pages]
         .reverse()
         .find((candidate) => candidate.url() !== "about:blank") ??

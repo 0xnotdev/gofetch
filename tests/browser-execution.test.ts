@@ -400,6 +400,44 @@ describe("BrowserRunCoordinator", () => {
     await firstRun;
   });
 
+  it("replaces an abandoned human-paused run when a new run starts", async () => {
+    const first = createBrowserFake();
+    const second = createBrowserFake();
+    vi.mocked(first.session.execute).mockResolvedValue({
+      kind: "human_required",
+      summary: "Sign in in the shared browser.",
+      currentUrl: "https://accounts.example.test/login",
+      intervention: {
+        kind: "browser_takeover",
+        prompt: "Complete sign-in, then hand control back.",
+        reason: "The account owner must authenticate.",
+        sensitive: true,
+      },
+    });
+    const factory: BrowserSessionFactory = {
+      create: vi
+        .fn()
+        .mockResolvedValueOnce(first.session)
+        .mockResolvedValueOnce(second.session),
+    };
+    const coordinator = new BrowserRunCoordinator({
+      factory,
+      maxSessionStarts: 2,
+      minRunIntervalMs: 0,
+    });
+
+    await expect(coordinator.run(signupPlan)).resolves.toMatchObject({
+      status: "awaiting_human",
+    });
+    await expect(coordinator.run(signupPlan)).resolves.toMatchObject({
+      status: "completed",
+    });
+
+    expect(first.session.close).toHaveBeenCalledOnce();
+    expect(second.session.close).toHaveBeenCalledOnce();
+    expect(factory.create).toHaveBeenCalledTimes(2);
+  });
+
   it("rejects a run before opening a session when the configured quota is exhausted", async () => {
     const { factory } = createBrowserFake();
     const coordinator = new BrowserRunCoordinator({
