@@ -3,6 +3,7 @@ import type {
   PathClassification,
   ResolvedTarget,
 } from "@/domain/credential-plan";
+import { getDomain } from "tldts";
 
 export type {
   CredentialPlan,
@@ -58,7 +59,7 @@ async function buildCredentialPlanWithoutCleanup(
   query: string,
   dependencies: CredentialPlanDependencies,
 ): Promise<CredentialPlan> {
-  const searchResults = await dependencies.research.search(
+  let searchResults = await dependencies.research.search(
     `${query} official API developer documentation authentication credentials signup login dashboard`,
   );
   const target = await dependencies.planner.resolveTarget({ query, searchResults });
@@ -83,10 +84,25 @@ async function buildCredentialPlanWithoutCleanup(
   const selectedOfficialSources = target.officialSourceUrls
     .filter((url) => resultUrls.has(url) && new URL(url).protocol === "https:")
     .slice(0, 3);
-  const relatedAccountRoutes = relatedOfficialAccountRoutes(
+  let relatedAccountRoutes = relatedOfficialAccountRoutes(
     searchResults,
     selectedOfficialSources,
   );
+  if (relatedAccountRoutes.length === 0) {
+    try {
+      const focusedAccountResults = await dependencies.research.search(
+        `${target.appName} official account login signup developer dashboard API keys`,
+      );
+      searchResults = mergeSearchResults(searchResults, focusedAccountResults);
+      relatedAccountRoutes = relatedOfficialAccountRoutes(
+        searchResults,
+        selectedOfficialSources,
+      );
+    } catch {
+      // Preserve the verified documentation path when the optional focused
+      // account-route search is temporarily unavailable.
+    }
+  }
   const officialSources = [
     ...new Set([
       ...selectedOfficialSources.slice(0, 1),
@@ -194,11 +210,54 @@ function relatedOfficialAccountRoutes(
         result.url !== null &&
         !selectedOfficialSources.includes(result.url) &&
         selectedRoots.includes(siteRoot(result.url)) &&
-        /signup|sign up|register|login|log in|auth|dashboard|console|account/i.test(
-          `${result.title} ${result.url}`,
-        ),
+        accountRouteEvidenceScore(result) > 0,
     )
     .map((result) => result.url);
+}
+
+function mergeSearchResults(
+  current: SearchResult[],
+  additional: SearchResult[],
+): SearchResult[] {
+  const byUrl = new Map(current.map((result) => [result.url, result]));
+  for (const result of additional) {
+    if (!byUrl.has(result.url)) byUrl.set(result.url, result);
+  }
+  return [...byUrl.values()];
+}
+
+function accountRouteEvidenceScore(result: {
+  title: string;
+  url: string | null;
+}): number {
+  if (!result.url) return 0;
+  try {
+    const url = new URL(result.url);
+    if (
+      /(?:^|\/)(?:signup|sign-up|register|login|log-in|auth|dashboard|console|account)(?:\/|$)/i.test(
+        url.pathname,
+      )
+    ) {
+      return 3;
+    }
+    if (
+      /^(?:app|dashboard|console|account|accounts|auth|login)\./i.test(
+        url.hostname,
+      )
+    ) {
+      return 2;
+    }
+    if (
+      /\b(?:sign up|signup|register|log in|login|account portal|dashboard|developer console)\b/i.test(
+        result.title,
+      )
+    ) {
+      return 1;
+    }
+  } catch {
+    // Malformed results are discarded by secureUrl before this scorer runs.
+  }
+  return 0;
 }
 
 function secureUrl(value: string): string | null {
@@ -213,6 +272,6 @@ function secureUrl(value: string): string | null {
 }
 
 function siteRoot(value: string): string {
-  const labels = new URL(value).hostname.split(".");
-  return labels.slice(-2).join(".");
+  const hostname = new URL(value).hostname;
+  return getDomain(hostname, { allowPrivateDomains: true }) ?? hostname;
 }

@@ -173,6 +173,63 @@ describe("buildCredentialPlan", () => {
     expect(plan.signupUrl).toBe(accountUrl);
   });
 
+  it("runs a focused official account search when the first search returns only documentation", async () => {
+    const documentationUrl =
+      "https://docs.example.test/reference/authenticating-to-example";
+    const accountUrl = "https://app.example.test/login";
+    const search = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { title: "Example API documentation", url: documentationUrl },
+      ])
+      .mockResolvedValueOnce([
+        { title: "Example account login", url: accountUrl },
+      ]);
+    const fetch = vi.fn(async (url: string) => ({
+      url,
+      content:
+        url === accountUrl
+          ? "Sign in to manage and create API keys."
+          : "Example uses account-scoped API keys.",
+    }));
+
+    const plan = await buildCredentialPlan("Example Platform", {
+      research: { search, fetch },
+      planner: {
+        async resolveTarget() {
+          return {
+            inputMode: "direct",
+            appName: "Example Platform",
+            selectionReason: "The user named it.",
+            clarificationQuestion: null,
+            requiresConfirmation: false,
+            officialSourceUrls: [documentationUrl],
+          };
+        },
+        async classifyPath({ documents }) {
+          const hasAccountRoute = documents.some(
+            (document) => document.url === accountUrl,
+          );
+          return {
+            path: "signup_required",
+            credentialTypes: ["api_key"],
+            summary: "Sign in and create an API key.",
+            signupUrl: hasAccountRoute ? accountUrl : documentationUrl,
+            blocker: null,
+          };
+        },
+      },
+    });
+
+    expect(search).toHaveBeenCalledTimes(2);
+    expect(search).toHaveBeenLastCalledWith(
+      expect.stringContaining("Example Platform official account login"),
+    );
+    expect(fetch).toHaveBeenCalledWith(accountUrl);
+    expect(plan.signupUrl).toBe(accountUrl);
+    expect(plan.officialSources).toContain(accountUrl);
+  });
+
   it("keeps a related account route when the resolver already selected three documentation pages", async () => {
     const documentationUrls = [
       "https://docs.example.test/reference/authentication",
