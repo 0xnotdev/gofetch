@@ -386,6 +386,84 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(act).not.toHaveBeenCalled();
   });
 
+  it("continues through official navigation when human action is claimed on a documentation page", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://docs.example.test/api-keys"),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true),
+    };
+    const extract = vi
+      .fn()
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "Sign up requires an email address.",
+        intervention: {
+          kind: "identity_value",
+          prompt: "Enter your email address.",
+          reason: "An account needs identity details.",
+          sensitive: true,
+        },
+      })
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "The visible signup form needs your email address.",
+        intervention: {
+          kind: "identity_value",
+          prompt: "Enter your email address in the signup form.",
+          reason: "Only the account owner can provide it.",
+          sensitive: true,
+        },
+      });
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Opened the account page.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-documentation-human-claim",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-documentation-human-claim",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const session = await factory.create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create an account and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      summary: "The visible signup form needs your email address.",
+    });
+
+    expect(act).toHaveBeenCalledWith(
+      expect.stringContaining("There is no visible human-only input"),
+    );
+    expect(extract).toHaveBeenCalledTimes(2);
+  });
+
   it("accepts the immediate HTTPS redirect from a verified signup URL", async () => {
     let currentUrl = "about:blank";
     const page = {
