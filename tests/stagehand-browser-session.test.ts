@@ -127,6 +127,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(extract).toHaveBeenCalledWith(
       expect.stringContaining("Any Service"),
       expect.anything(),
+      { timeout: 45_000 },
     );
     expect(act).toHaveBeenCalledWith("Click the Continue button.");
     expect(observation).toEqual({

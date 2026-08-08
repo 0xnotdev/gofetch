@@ -102,6 +102,7 @@ export interface StagehandAdapter {
   extract(
     instruction: string,
     schema: typeof browserObservationSchema,
+    options?: { timeout: number },
   ): Promise<unknown>;
   act(
     instruction: string,
@@ -248,6 +249,7 @@ class StagehandBrowserSession implements BrowserSession {
       const extracted = await this.#stagehand.extract(
         buildStepInstruction(request, stepNumber),
         browserObservationSchema,
+        { timeout: 45_000 },
       );
       throwIfAborted(signal);
       this.#assertAllowedUrl(page.url());
