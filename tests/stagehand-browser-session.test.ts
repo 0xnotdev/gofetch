@@ -464,6 +464,56 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(extract).toHaveBeenCalledTimes(2);
   });
 
+  it("hands a visible third-party identity form to the user instead of blocking", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.identity.example.test/login"),
+      evaluate: vi.fn().mockResolvedValue(true),
+    };
+    const stagehand = ({
+      browserbaseSessionID: "bb-external-login",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-external-login",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract: vi.fn().mockResolvedValue({
+        kind: "blocked",
+        summary:
+          "The current page is an external authentication flow and requires sign in.",
+      }),
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const session = await factory.create(new AbortController().signal);
+    await session.setAllowedDomains(["accounts.identity.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Sign in and create an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://accounts.identity.example.test/login"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      intervention: {
+        kind: "browser_takeover",
+        sensitive: true,
+      },
+    });
+  });
+
   it("accepts the immediate HTTPS redirect from a verified signup URL", async () => {
     let currentUrl = "about:blank";
     const page = {
@@ -497,5 +547,51 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     await expect(
       session.navigate("https://www.example.test/start-free", signal),
     ).resolves.toBeUndefined();
+  });
+
+  it("hands an external identity-provider page to the human without automating it", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.google.com/signin"),
+    };
+    const extract = vi.fn();
+    const stagehand = ({
+      browserbaseSessionID: "bb-external-identity",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-external-identity",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const factory = new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    });
+    const session = await factory.create(new AbortController().signal);
+    await session.setAllowedDomains(["composio.dev"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Composio",
+          planSummary: "Sign in and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://composio.dev/auth"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      intervention: { kind: "browser_takeover" },
+      currentUrl: "https://accounts.google.com/signin",
+    });
+    expect(extract).not.toHaveBeenCalled();
   });
 });

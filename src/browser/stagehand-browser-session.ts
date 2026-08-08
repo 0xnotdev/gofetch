@@ -220,6 +220,9 @@ class StagehandBrowserSession implements BrowserSession {
     privateInput?: PrivateBrowserInput,
   ): Promise<BrowserObservation> {
     const page = this.#page();
+    if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+      return externalIdentityHandoff(page.url());
+    }
     this.#assertAllowedUrl(page.url());
     if (privateInput) {
       throwIfAborted(signal);
@@ -235,6 +238,9 @@ class StagehandBrowserSession implements BrowserSession {
         },
       );
       throwIfAborted(signal);
+      if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+        return externalIdentityHandoff(page.url());
+      }
       this.#assertAllowedUrl(page.url());
       if (!inputResult.success) {
         return {
@@ -273,6 +279,9 @@ class StagehandBrowserSession implements BrowserSession {
       ) {
         await page.waitForTimeout(1_500);
         throwIfAborted(signal);
+        if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+          return externalIdentityHandoff(page.url());
+        }
         this.#assertAllowedUrl(page.url());
         continue;
       }
@@ -285,6 +294,9 @@ class StagehandBrowserSession implements BrowserSession {
           "There is no visible human-only input, verification challenge, or CAPTCHA on this page. Click one visible official link or button that advances toward sign-up, login, get started, the dashboard, or API keys. Do not enter or submit data.",
         );
         throwIfAborted(signal);
+        if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+          return externalIdentityHandoff(page.url());
+        }
         this.#assertAllowedUrl(page.url());
         if (!advanceResult.success) {
           return {
@@ -296,6 +308,26 @@ class StagehandBrowserSession implements BrowserSession {
           };
         }
         continue;
+      }
+
+      if (
+        decision.kind === "blocked" &&
+        isIdentityAuthenticationBlocker(decision.summary) &&
+        (await hasVisibleHumanGate(page))
+      ) {
+        return {
+          kind: "human_required",
+          summary: decision.summary,
+          intervention: {
+            kind: "browser_takeover",
+            prompt:
+              "Complete the sign-in or identity step in the live browser, then hand control back.",
+            reason:
+              "The current page requires account-owner authentication that the agent cannot provide.",
+            sensitive: true,
+          },
+          currentUrl: page.url(),
+        };
       }
 
       if (decision.kind !== "act") {
@@ -317,6 +349,9 @@ class StagehandBrowserSession implements BrowserSession {
 
       const actionResult = await this.#stagehand.act(decision.action);
       throwIfAborted(signal);
+      if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+        return externalIdentityHandoff(page.url());
+      }
       this.#assertAllowedUrl(page.url());
       if (!actionResult.success) {
         return {
@@ -436,6 +471,38 @@ async function hasVisibleHumanGate(page: StagehandPageAdapter): Promise<boolean>
     // A failed inspection must not make the agent take a human-only step itself.
     return true;
   }
+}
+
+function isIdentityAuthenticationBlocker(summary: string): boolean {
+  return /external authentication|third-party (?:login|sign.?in)|sign.?in|log.?in|identity (?:form|provider|verification)|account[- ]owner authentication/i.test(
+    summary,
+  );
+}
+
+function isExternalIdentityProvider(
+  value: string,
+  allowedDomains: Set<string>,
+): boolean {
+  const url = new URL(value);
+  if (allowedDomains.has(url.hostname)) return false;
+  return /(^|\.)(accounts|login|auth|identity|id|sso)\./i.test(url.hostname) ||
+    /\/(?:signin|sign-in|login|authorize|oauth)(?:\/|$)/i.test(url.pathname);
+}
+
+function externalIdentityHandoff(currentUrl: string): BrowserObservation {
+  return {
+    kind: "human_required",
+    summary: "An external identity-provider sign-in page requires the account owner.",
+    currentUrl,
+    intervention: {
+      kind: "browser_takeover",
+      prompt:
+        "Sign in or complete signup in the live browser, then hand control back.",
+      reason:
+        "The current page belongs to an external identity provider and requires your credentials or approval.",
+      sensitive: true,
+    },
+  };
 }
 
 function throwIfAborted(signal: AbortSignal): void {
