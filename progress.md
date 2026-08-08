@@ -750,6 +750,30 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` - passed; 102 tests across 14 files.
 - `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
+### Live View target-bound popup handoff
+
+**Status:** implementation deployed and hosted screenshot-level verification passed
+
+**Implementation commit:** `283d523`
+
+**Reported symptom:** GoFetch returned `awaiting_human` for an external identity-provider page while the embedded Browserbase Live View remained visibly bound to `docs.composio.dev/docs/quickstart`.
+
+**Root cause:** Browserbase's embedded DevTools URL is bound to the Chrome target created for that Live View. Marking a separately opened identity popup active and calling `Page.bringToFront` does not retarget that embedded DevTools page, so the human continued to see documentation.
+
+**Delivered:**
+
+- Parses the page target already encoded in Browserbase's Live View URL and identifies the exact Stagehand page shown to the human.
+- When an identity flow opens in a different page, moves the observed identity URL into the Live View-bound page before returning `human_required`.
+- Verifies that the visible page actually changed; if it did not, GoFetch refuses to present a misleading human handoff.
+- Keeps the behavior service-independent: the logic uses Browserbase target identity and the observed external-auth URL, with no Composio-specific route or selector.
+
+**Verification evidence:**
+
+- The two-page regression was observed returning a handoff while the Live View-bound page stayed on documentation; it now navigates that bound page to the observed identity URL and activates it before handoff.
+- A fresh hosted run intentionally reproduced a docs-only Composio plan. It reached `awaiting_human` with the embedded address bar visibly showing `dashboard.composio.dev/login` and the Composio sign-in screen instead of documentation. The test session was cancelled cleanly without entering identity or credential data.
+- `npm test` - passed; 103 tests across 14 files.
+- `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -789,3 +813,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | `2e892d2`; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |
 | 2026-08-08 | Live View foreground synchronization added | `fdd9375`; exact background-identity/visible-docs handoff regression corrected; hosted Live View displayed the actual login page |
 | 2026-08-08 | Focused verified account-route discovery added | `e8ae074`; exact hosted docs-only planning failure corrected generically; hosted Composio selected `/auth` and reached HITL |
+| 2026-08-08 | Live View target-bound popup handoff added | `283d523`; exact docs-visible/identity-popup mismatch corrected and hosted screenshot-level verification passed |
