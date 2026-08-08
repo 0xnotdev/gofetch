@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the visible-modal-before-recovery ordering fix is deployed and rechecked.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the deterministic pre-login handoff fix is deployed and rechecked.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -618,6 +618,30 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 94 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Immediate pre-login human handoff
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptom:** after browser work started, the UI remained on `Agent working...` for almost a minute before the account-owner login step appeared or the run terminated.
+
+**Root cause:** the browser loop sent an already-visible login or signup form to the model-backed structured inspector before checking the page DOM for human-only identity and verification fields. That inspector had a 45-second ceiling, so the handoff that could be decided deterministically was delayed behind a provider call.
+
+**Delivered:**
+
+- Detects visible email, password, identity, phone, OTP, CAPTCHA, and verification controls before the first model-backed browser decision.
+- Immediately returns the same-session Live View takeover when a human-only field is definitely present; the model is not called first.
+- Preserves fail-closed behavior when a later model decision identifies a human step but DOM inspection is unavailable.
+- Preserves the ephemeral private-value path: an explicitly supplied OTP or identity value is entered before normal agent continuation rather than being trapped in a repeated handoff.
+- Uses only generic page semantics and verified-domain policy; no Composio or other app-specific route was added.
+
+**Verification evidence:**
+
+- Browserbase history showed the reported hosted attempt lasted 55 seconds, matching the 45-second inspection timeout plus session overhead.
+- The exact initial-login regression was observed failing because model inspection ran before handoff; it now pauses with zero model calls.
+- The same regression continues after handback in the same session and returns a credential from the authenticated page.
+- `npm test` - passed; 95 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -652,3 +676,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Context-aware credential field selection added | Pending commit; exact `Composio_API_Key` and digit-bearing Name-field regressions corrected; 92 tests and full production verification pass |
 | 2026-08-08 | Remote clipboard credential channel added | Pending commit; exact post-create Copy/clipboard/twelve-step repro corrected; 93 tests and full production verification pass |
 | 2026-08-08 | Visible-modal-before-recovery ordering corrected | Pending commit; screenshot-equivalent malformed-output/visible-key repro corrected; 94 tests and full production verification pass |
+| 2026-08-08 | Immediate pre-login handoff added | Pending commit; visible login/signup/verification fields pause before model inspection, same-session resume reaches credential, and 95 tests plus full production verification pass |

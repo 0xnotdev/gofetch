@@ -433,12 +433,80 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(act).not.toHaveBeenCalled();
   });
 
+  it("pauses immediately on a login form, then resumes the same session to a credential", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.example.test/login"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValue(false),
+    };
+    const extract = vi.fn().mockResolvedValue({
+      kind: "credential_obtained",
+      summary: "Created and retrieved the API key after login.",
+      credential: {
+        credentialType: "api_key",
+        credential: "secret-example-after-login",
+        sourceUrl: "https://accounts.example.test/settings/api-keys",
+        usageNote: "Use the documented Authorization header.",
+        validationStatus: "not_validated",
+        validationNote: "No harmless validation endpoint was available.",
+      },
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-initial-login",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-initial-login",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["accounts.example.test"]);
+
+    const request = {
+      appName: "Any Service",
+      planSummary: "Sign in, then create an API key.",
+      credentialTypes: ["api_key"] as Array<"api_key">,
+      officialSources: ["https://accounts.example.test/login"],
+    };
+    await expect(
+      session.execute(request, new AbortController().signal),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      intervention: { kind: "browser_takeover", sensitive: true },
+    });
+    expect(extract).not.toHaveBeenCalled();
+
+    await expect(
+      session.execute(request, new AbortController().signal),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: { credential: "secret-example-after-login" },
+    });
+    expect(extract).toHaveBeenCalledOnce();
+  });
+
   it("retries one malformed structured response before handing off a visible form", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
       url: vi.fn().mockReturnValue("https://accounts.example.test/signup"),
       waitForTimeout: vi.fn().mockResolvedValue(undefined),
-      evaluate: vi.fn().mockResolvedValue(true),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true),
     };
     const extract = vi
       .fn()
@@ -662,6 +730,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       waitForTimeout: vi.fn().mockResolvedValue(undefined),
       evaluate: vi
         .fn()
+        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({
           value: "ak_live_example_1234567890",
@@ -916,6 +985,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       url: vi.fn().mockReturnValue("https://docs.example.test/api-keys"),
       evaluate: vi
         .fn()
+        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true),
     };

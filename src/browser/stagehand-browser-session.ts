@@ -270,6 +270,23 @@ class StagehandBrowserSession implements BrowserSession {
       }
     }
 
+    if (!privateInput && (await detectVisibleHumanGate(page)) === true) {
+      return {
+        kind: "human_required",
+        summary:
+          "The current page is ready for the account owner to complete a sign-in, signup, or verification step.",
+        intervention: {
+          kind: "browser_takeover",
+          prompt:
+            "Complete the visible sign-in, signup, or verification step in the live browser, then hand control back.",
+          reason:
+            "The page contains a visible human-only identity or verification field.",
+          sensitive: true,
+        },
+        currentUrl: page.url(),
+      };
+    }
+
     let malformedStructuredResponses = 0;
     let malformedRecoveryActions = 0;
     let noActionFoundFailures = 0;
@@ -912,10 +929,11 @@ function isCredentialType(
   ].includes(value);
 }
 
-async function hasVisibleHumanGate(page: StagehandPageAdapter): Promise<boolean> {
+async function detectVisibleHumanGate(
+  page: StagehandPageAdapter,
+): Promise<boolean | undefined> {
   if (!page.evaluate) {
-    // Without page inspection, fail closed and preserve the human handoff.
-    return true;
+    return undefined;
   }
 
   try {
@@ -965,9 +983,14 @@ async function hasVisibleHumanGate(page: StagehandPageAdapter): Promise<boolean>
       return hasSensitiveField || hasChallenge;
     });
   } catch {
-    // A failed inspection must not make the agent take a human-only step itself.
-    return true;
+    return undefined;
   }
+}
+
+async function hasVisibleHumanGate(page: StagehandPageAdapter): Promise<boolean> {
+  // When a model has already identified a human-only step, inspection failures
+  // fail closed. The initial preflight only pauses on a definite DOM match.
+  return (await detectVisibleHumanGate(page)) ?? true;
 }
 
 function isIdentityAuthenticationBlocker(summary: string): boolean {
