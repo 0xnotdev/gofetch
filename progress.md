@@ -704,7 +704,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Live View foreground synchronization
 
-**Status:** implementation complete and pushed; hosted recheck pending
+**Status:** implementation deployed; hosted foreground recheck depends on account-route discovery below
 
 **Implementation commit:** `fdd9375`
 
@@ -721,7 +721,31 @@ The current Browserbase API key resolves its project automatically; no separate 
 **Verification evidence:**
 
 - The exact two-tab regression was observed returning a Google handoff without ever foregrounding the Google page; it now calls both Stagehand page activation and Chrome `Page.bringToFront` before returning the handoff.
+- Render reported the implementation commit live before the hosted acceptance run began.
 - `npm test` - passed; 101 tests across 14 files.
+- `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
+### Focused verified account-route discovery
+
+**Status:** implementation complete and pushed; hosted recheck pending
+
+**Implementation commit:** `e8ae074`
+
+**Reported symptom:** a fresh hosted Composio plan returned only official documentation sources. Browser work therefore began on documentation and ended blocked because there was no verified signup, login, dashboard, or API-key-management route to follow.
+
+**Root cause:** the broad initial web query could return only documentation even though a related official account route exists. The earlier source-priority fix preserved an account route only when that route was already present in the first result set; it did not perform a second focused lookup when the route was absent.
+
+**Delivered:**
+
+- When a resolved app has verified official documentation but no account route, planning performs one bounded follow-up search focused on that resolved app's official login, signup, dashboard, and API-key path.
+- A discovered route is accepted only when it is HTTPS, shares the registrable site root with verified official evidence, and has strong route/hostname/title evidence for an account surface.
+- Documentation URLs containing words such as `authentication` no longer qualify merely because they contain the substring `auth`.
+- The behavior is generic for direct app names and capability-selected apps; no Composio URL or selector is hard-coded.
+
+**Verification evidence:**
+
+- The exact docs-only initial-search regression was observed making one search and starting from documentation; it now performs the focused search, fetches the verified same-site login route, and selects it as `signupUrl`.
+- `npm test` - passed; 102 tests across 14 files.
 - `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
 ## Build log
@@ -762,3 +786,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Multi-page generated-key modal capture added | `ddfd6f3`; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
 | 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | `2e892d2`; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |
 | 2026-08-08 | Live View foreground synchronization added | `fdd9375`; exact background-identity/visible-docs handoff regression corrected; 101 tests and full local verification pass |
+| 2026-08-08 | Focused verified account-route discovery added | `e8ae074`; exact hosted docs-only planning failure corrected generically; 102 tests and full local verification pass |
