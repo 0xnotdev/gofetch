@@ -386,6 +386,47 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(act).not.toHaveBeenCalled();
   });
 
+  it("retries one malformed structured response before handing off a visible form", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.example.test/signup"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(true),
+    };
+    const extract = vi
+      .fn()
+      .mockResolvedValueOnce({ unexpected: "model format drift" })
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "The signup form needs your email address.",
+        intervention: {
+          kind: "identity_value",
+          prompt: "Enter your email address.",
+          reason: "Only the account owner can provide it.",
+          sensitive: true,
+        },
+      });
+    const stagehand = ({
+      browserbaseSessionID: "bb-malformed-retry",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-malformed-retry",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class { constructor() { return stagehand; } } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["accounts.example.test"]);
+
+    await expect(session.execute({ appName: "Any Service", planSummary: "Sign up.", credentialTypes: ["api_key"], officialSources: ["https://accounts.example.test/signup"] }, new AbortController().signal)).resolves.toMatchObject({ kind: "human_required" });
+    expect(extract).toHaveBeenCalledTimes(2);
+    expect(page.waitForTimeout).toHaveBeenCalledWith(1_500);
+  });
+
   it("continues through official navigation when human action is claimed on a documentation page", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

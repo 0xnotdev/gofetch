@@ -251,6 +251,7 @@ class StagehandBrowserSession implements BrowserSession {
       }
     }
 
+    let malformedStructuredResponses = 0;
     for (let stepNumber = 1; stepNumber <= 12; stepNumber += 1) {
       throwIfAborted(signal);
       const extracted = await this.#stagehand.extract(
@@ -263,12 +264,21 @@ class StagehandBrowserSession implements BrowserSession {
 
       const parsed = browserObservationSchema.safeParse(extracted);
       if (!parsed.success) {
+        malformedStructuredResponses += 1;
+        if (malformedStructuredResponses === 1) {
+          await page.waitForTimeout(1_500);
+          throwIfAborted(signal);
+          this.#assertAllowedUrl(page.url());
+          continue;
+        }
         return {
           kind: "blocked",
           summary: "The browser could not produce a safe structured next step.",
           currentUrl: page.url(),
         };
       }
+
+      malformedStructuredResponses = 0;
 
       const decision = parsed.data;
       if (
