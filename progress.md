@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoint 7 remains open. The repaired runtime and diverse non-signup matrix are verified; the fresh Browserbase project and deployed hosted planning now work. The remaining acceptance gate is one genuine third-party signup pause, unchanged-session handback, and credential retrieval or exact target-side blocker.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has now succeeded. Checkpoint 7 remains open only until the alternate embedded Google-login handoff reliability fix is deployed and rechecked.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -508,6 +508,29 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 91 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Hosted end-to-end success and embedded identity reliability
+
+**Status:** end-to-end acceptance achieved once; alternate-route fix pending deployed recheck
+
+**Hosted acceptance evidence:**
+
+- The user completed a genuine Composio login in the shared Browserbase session, handed control back, and GoFetch navigated to API-key management, created a new key, extracted it, and returned it in the hosted UI.
+- This is the first full deployed acceptance of the assignment's central contract. No independent signup or manual key copy-back occurred.
+
+**Subsequent reliability symptom:** a second run encountered an embedded or cross-origin Google sign-in UI. The model explicitly reported that the current page required email/phone, but DOM visibility inspection returned false and the run ended `blocked`.
+
+**Delivered:**
+
+- Treats explicit current-page identity observations—such as `Currently on a Google sign-in page` plus required identity input—as same-session browser takeovers even when cross-origin fields cannot be inspected from the parent DOM.
+- Keeps the stricter visible-field requirement for documentation prose or non-current references, avoiding false human handoffs from instructions that merely discuss signup.
+
+**Verification evidence:**
+
+- The exact reported Google sentence with DOM visibility forced false was observed returning `blocked` before the fix and now returns `human_required` with a sensitive browser takeover.
+- All existing documentation-page and external-identity tests remain green.
+- `npm test` — passed; 92 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -537,3 +560,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Security-verification handoff added | Pending commit; 87 tests, typecheck, lint, production build, and diff check passed; Cloudflare/CAPTCHA/bot checks now pause the same live session for human completion |
 | 2026-08-08 | Model-independent visible credential retrieval added | Pending commit; 89 tests, typecheck, lint, production build, and diff check passed; a newly rendered key can be returned directly from the verified page after one Create action without relying on model schema output |
 | 2026-08-08 | No-action credential recovery added | Pending commit; 91 tests, typecheck, lint, production build, and diff check passed; `No action found` now checks for and returns an already visible key before bounded reinspection |
+| 2026-08-08 | First full hosted credential run succeeded; embedded Google handoff repaired | Pending commit; user-confirmed same-session login, agent-created key, and returned credential; 92 tests and full production verification pass for alternate identity UI |

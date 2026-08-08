@@ -903,6 +903,58 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     });
   });
 
+  it("hands off an explicitly current Google sign-in page even when its fields are cross-origin", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://auth.example.test/login"),
+      evaluate: vi.fn().mockResolvedValue(false),
+    };
+    const act = vi.fn();
+    const stagehand = ({
+      browserbaseSessionID: "bb-embedded-google-login",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-embedded-google-login",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract: vi.fn().mockResolvedValue({
+        kind: "blocked",
+        summary:
+          "Currently on a Google sign-in page, which requires personal information (email/phone) to proceed. Cannot enter identity information as per instructions. This blocks further progress towards obtaining API keys.",
+      }),
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["auth.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Sign in and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://auth.example.test/login"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      intervention: {
+        kind: "browser_takeover",
+        sensitive: true,
+      },
+    });
+    expect(act).not.toHaveBeenCalled();
+  });
+
   it("hands a reported Cloudflare security check to the human", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

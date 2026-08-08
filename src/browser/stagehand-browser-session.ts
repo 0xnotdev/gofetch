@@ -397,7 +397,8 @@ class StagehandBrowserSession implements BrowserSession {
       if (
         decision.kind === "blocked" &&
         isIdentityAuthenticationBlocker(decision.summary) &&
-        (await hasVisibleHumanGate(page))
+        (isExplicitCurrentIdentityPage(decision.summary) ||
+          (await hasVisibleHumanGate(page)))
       ) {
         return {
           kind: "human_required",
@@ -772,6 +773,18 @@ function isIdentityAuthenticationBlocker(summary: string): boolean {
   return /external authentication|third-party (?:login|sign\s*in)|sign\s*in|log\s*in|sign(?:ing)?\s*up|register|personal information|identity (?:form|provider|verification|details)|account[- ]owner authentication/i.test(
     summary,
   );
+}
+
+function isExplicitCurrentIdentityPage(summary: string): boolean {
+  const explicitlyCurrent =
+    /currently (?:on|at)|current page (?:is|shows|requires|contains)|(?:i am|we are) on (?:a|the)|on (?:a|the) (?:google |external |third-party )?(?:sign[ -]?in|log[ -]?in|authentication|identity) page/i.test(
+      summary,
+    );
+  const requiresIdentityInput =
+    /email|phone|password|personal information|identity information|account credentials|sign[ -]?in|log[ -]?in/i.test(
+      summary,
+    );
+  return explicitlyCurrent && requiresIdentityInput;
 }
 
 function isHumanSecurityVerification(summary: string): boolean {
