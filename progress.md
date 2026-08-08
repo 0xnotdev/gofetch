@@ -486,6 +486,28 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 89 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### No-action credential recovery
+
+**Status:** implementation complete; deployed end-to-end retest pending
+
+**Reported symptom:** after reaching the API-key creation result, Stagehand returned `Failed to perform act: No action found`, and the browser loop terminated before checking whether the key was already visible.
+
+**Root cause:** action failure handling ran before the model-independent visible-credential scan.
+
+**Delivered:**
+
+- Checks the verified page for a visible credential before treating `No action found` as a failure, regardless of whether Stagehand believes its copy/create action succeeded.
+- If no credential is visible, waits and re-inspects the page instead of terminating immediately.
+- Caps this recovery at three action failures and then returns a precise terminal reason, preventing loops.
+- Other genuine action failures preserve their original observed reason.
+
+**Verification evidence:**
+
+- The exact `Failed to perform act: No action found` regression was observed returning `blocked` before the fix and now returns `credential_obtained` from the visible page.
+- Companion regression verifies the three-reinspection fail-closed ceiling when no credential or action exists.
+- `npm test` — passed; 91 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -514,3 +536,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Authenticated-dashboard structured recovery added | Pending commit; 86 tests, typecheck, lint, production build, and diff check passed; repeated malformed post-login observations now trigger bounded safe progress instead of immediate termination |
 | 2026-08-08 | Security-verification handoff added | Pending commit; 87 tests, typecheck, lint, production build, and diff check passed; Cloudflare/CAPTCHA/bot checks now pause the same live session for human completion |
 | 2026-08-08 | Model-independent visible credential retrieval added | Pending commit; 89 tests, typecheck, lint, production build, and diff check passed; a newly rendered key can be returned directly from the verified page after one Create action without relying on model schema output |
+| 2026-08-08 | No-action credential recovery added | Pending commit; 91 tests, typecheck, lint, production build, and diff check passed; `No action found` now checks for and returns an already visible key before bounded reinspection |

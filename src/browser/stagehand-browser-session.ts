@@ -271,6 +271,7 @@ class StagehandBrowserSession implements BrowserSession {
 
     let malformedStructuredResponses = 0;
     let malformedRecoveryActions = 0;
+    let noActionFoundFailures = 0;
     for (let stepNumber = 1; stepNumber <= 12; stepNumber += 1) {
       throwIfAborted(signal);
       const extracted = await this.#stagehand.extract(
@@ -436,14 +437,8 @@ class StagehandBrowserSession implements BrowserSession {
         return externalIdentityHandoff(page.url());
       }
       this.#assertAllowedUrl(page.url());
-      if (!actionResult.success) {
-        return {
-          kind: "blocked",
-          summary: actionResult.message || decision.summary,
-          currentUrl: page.url(),
-        };
-      }
-      if (isCredentialCreationAction(decision.action)) {
+      const noActionFound = isNoActionFound(actionResult.message);
+      if (isCredentialCreationAction(decision.action) || noActionFound) {
         const visibleCredential = await waitForVisibleCredential(
           page,
           request,
@@ -459,6 +454,29 @@ class StagehandBrowserSession implements BrowserSession {
           };
         }
       }
+      if (!actionResult.success) {
+        if (noActionFound) {
+          noActionFoundFailures += 1;
+          if (noActionFoundFailures >= 3) {
+            return {
+              kind: "blocked",
+              summary:
+                "The authenticated page exposed no usable action or visible credential after three re-inspections.",
+              currentUrl: page.url(),
+            };
+          }
+          await page.waitForTimeout(1_000);
+          throwIfAborted(signal);
+          this.#assertAllowedUrl(page.url());
+          continue;
+        }
+        return {
+          kind: "blocked",
+          summary: actionResult.message || decision.summary,
+          currentUrl: page.url(),
+        };
+      }
+      noActionFoundFailures = 0;
     }
 
     return {
@@ -674,6 +692,10 @@ function isCredentialCreationAction(action: string): boolean {
   return /(?:create|generate|issue|reveal|show|copy|submit|confirm).{0,40}(?:api.?key|access.?token|secret|credential|token)|(?:api.?key|access.?token|secret|credential|token).{0,40}(?:create|generate|issue|reveal|show|copy|submit|confirm)/i.test(
     action,
   );
+}
+
+function isNoActionFound(message: string): boolean {
+  return /\bno action found\b/i.test(message);
 }
 
 function isCredentialType(

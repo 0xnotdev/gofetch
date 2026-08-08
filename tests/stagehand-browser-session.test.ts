@@ -659,6 +659,122 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(act).toHaveBeenCalledOnce();
   });
 
+  it("returns an already visible key before treating No action found as terminal", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue({
+        value: "ak_live_visible_1234567890",
+        context: "New API key — copy and save this credential",
+      }),
+    };
+    const extract = vi.fn().mockResolvedValue({
+      kind: "act",
+      summary: "Copy the newly generated API key.",
+      action: "Copy the newly generated API key.",
+    });
+    const act = vi.fn().mockResolvedValue({
+      success: false,
+      message: "Failed to perform act: No action found",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-no-action-visible-key",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-no-action-visible-key",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: { credential: "ak_live_visible_1234567890" },
+    });
+    expect(act).toHaveBeenCalledOnce();
+  });
+
+  it("re-inspects after No action found but stops after three failures", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(null),
+    };
+    const extract = vi.fn().mockResolvedValue({
+      kind: "act",
+      summary: "Open the API-key creation control.",
+      action: "Click Create API Key.",
+    });
+    const act = vi.fn().mockResolvedValue({
+      success: false,
+      message: "Failed to perform act: No action found",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-no-action-limit",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-no-action-limit",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "blocked",
+      summary:
+        "The authenticated page exposed no usable action or visible credential after three re-inspections.",
+    });
+    expect(act).toHaveBeenCalledTimes(3);
+    expect(extract).toHaveBeenCalledTimes(3);
+  });
+
   it("continues through official navigation when human action is claimed on a documentation page", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),
