@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** Checkpoint 7 remains open. The repaired runtime and diverse non-signup matrix are verified; the final deployed signup pause/resume run is blocked because Browserbase rejects browser allocation on both the previously exhausted project and a newly created, zero-usage free project.
+**Current status:** Checkpoint 7 remains open. The repaired runtime and diverse non-signup matrix are verified; the fresh Browserbase project and deployed hosted planning now work. The remaining acceptance gate is one genuine third-party signup pause, unchanged-session handback, and credential retrieval or exact target-side blocker.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -348,9 +348,10 @@ The current Browserbase API key resolves its project automatically; no separate 
 ### Fresh Browserbase-account verification
 
 - A newly created Browserbase account was configured in the deployed Render service after its API key successfully returned the newly created `Production project`.
-- The new project's reported usage was `0` browser minutes and `0` proxy bytes, but its first deployed `Sentry API` planning attempt still received Browserbase HTTP 402: free-plan browser-minute limit reached.
-- Added a generic, provider-safe `browser_quota_unavailable` response (HTTP 503) for this precise condition. The UI now explains that browser access must be enabled or a project with available minutes selected, rather than mislabelling it as an official-source research failure.
-- Target-specific work did not run: no signup page was opened, no user identity data was requested, and this does not satisfy the remaining human-pause/resume acceptance criterion.
+- The new project's reported usage was `0` browser minutes and `0` proxy bytes. A direct new-key remote session opened `example.com` successfully, proving browser allocation works on the project.
+- The first 402 responses were traced to Render's old worker, which received the request while the intended secret value was not yet saved and the corrected deployment was still starting. A private post-deploy comparison confirmed the Render secret exactly matches the new supplied key.
+- After the corrected worker became live, deployed `NASA Open APIs` planning completed successfully and reached the target-confirmation gate. This closes the infrastructure/quota diagnosis; it does not yet satisfy the final human-pause/resume criterion.
+- The generic, provider-safe `browser_quota_unavailable` response (HTTP 503) remains covered by a regression test for any genuine HTTP 402 browser-minute failure.
 
 ## Build log
 
@@ -372,3 +373,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Checkpoint 7 reopened; implementation returns to 86% | `c70a2c3`, false `blocked` acceptance corrected; 65 tests and production build passed; hosted matrix pending |
 | 2026-08-08 | Hosted matrix expanded; Checkpoint 7 remains at 86% | `8ec5c88`, `65f311d`, `6a720aa`; 71 tests, diverse hosted cases, and quota evidence recorded; real signup resume pending quota reset |
 | 2026-08-08 | Fresh-account quota diagnosis and precise deployed error handling | New zero-usage project also returned Browserbase HTTP 402; targeted route test plus typecheck, lint, and production build passed; real signup resume still pending browser access |
+| 2026-08-08 | Fresh-account deployment diagnosis corrected | Direct remote session and deployed NASA planning succeeded after Render secret verification; prior 402 was an old-worker rollout race, not an entitlement failure |
