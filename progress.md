@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the latest credential-name false-positive correction is deployed and rechecked.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the remote-copy credential channel is deployed and rechecked.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -575,6 +575,27 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 92 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Remote clipboard credential channel
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptom:** GoFetch visibly named and created the API key, but could not retrieve it and continued until the safe twelve-step limit.
+
+**Root cause:** credential recovery supported visible DOM values but did not read the remote Browserbase clipboard after a successful Copy action. UIs that expose one-time secrets only through a Copy control therefore had no terminal credential channel.
+
+**Delivered:**
+
+- After a successful semantic Copy action specifically targeting an API key, token, secret, or credential, reads the remote page clipboard and returns a valid secret-shaped value.
+- Clipboard access is never attempted for unrelated actions, failed clicks, identity fields, or arbitrary page instructions.
+- Applies the same masking, human-label rejection, credential-type, source-domain, and `obtained_unverified` validation used by DOM extraction.
+- Also recognizes copy controls that expose the secret through `data-clipboard-text` or `data-clipboard` attributes.
+
+**Verification evidence:**
+
+- A deterministic repro with a successful Copy action, no visible DOM token, and a valid remote clipboard value was observed reaching the twelve-step blocker before the fix; it now returns `credential_obtained` after one extract/action.
+- `npm test` — passed; 93 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -607,3 +628,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | First full hosted credential run succeeded; embedded Google handoff repaired | Pending commit; user-confirmed same-session login, agent-created key, and returned credential; 92 tests and full production verification pass for alternate identity UI |
 | 2026-08-08 | Credential-name false positive rejected | Pending commit; exact `research_agent_composio` repro corrected; 92 tests and full production verification pass |
 | 2026-08-08 | Context-aware credential field selection added | Pending commit; exact `Composio_API_Key` and digit-bearing Name-field regressions corrected; 92 tests and full production verification pass |
+| 2026-08-08 | Remote clipboard credential channel added | Pending commit; exact post-create Copy/clipboard/twelve-step repro corrected; 93 tests and full production verification pass |

@@ -792,6 +792,66 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(extract).toHaveBeenCalledTimes(3);
   });
 
+  it("returns a generated key from the remote clipboard after a successful copy action", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockImplementation(async (pageFunction: () => unknown) =>
+        pageFunction.toString().includes("navigator.clipboard")
+          ? "ak_clipboard_example_1234567890"
+          : null,
+      ),
+    };
+    const extract = vi.fn().mockResolvedValue({
+      kind: "act",
+      summary: "Copy the newly generated API key.",
+      action: "Click Copy beside the newly generated API key.",
+    });
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Clicked Copy.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-clipboard-key",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-clipboard-key",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: { credential: "ak_clipboard_example_1234567890" },
+    });
+    expect(act).toHaveBeenCalledOnce();
+    expect(extract).toHaveBeenCalledOnce();
+  });
+
   it("continues through official navigation when human action is claimed on a documentation page", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

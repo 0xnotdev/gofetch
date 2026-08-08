@@ -440,6 +440,21 @@ class StagehandBrowserSession implements BrowserSession {
       }
       this.#assertAllowedUrl(page.url());
       const noActionFound = isNoActionFound(actionResult.message);
+      if (actionResult.success && isCredentialCopyAction(decision.action)) {
+        const clipboardCredential = await readClipboardCredential(
+          page,
+          request,
+        );
+        if (clipboardCredential) {
+          return {
+            kind: "credential_obtained",
+            summary:
+              "Retrieved the generated credential from the verified page's Copy action.",
+            currentUrl: page.url(),
+            credential: clipboardCredential,
+          };
+        }
+      }
       if (isCredentialCreationAction(decision.action) || noActionFound) {
         const visibleCredential = await waitForVisibleCredential(
           page,
@@ -618,14 +633,16 @@ async function readVisibleCredential(
       const values: Array<VisibleCredentialCandidate> = [];
 
       for (const element of document.querySelectorAll(
-        'input, textarea, code, pre, [data-testid*="key" i], [data-testid*="token" i], [data-test*="key" i], [data-test*="token" i]',
+        'input, textarea, code, pre, [data-clipboard-text], [data-clipboard], [data-testid*="key" i], [data-testid*="token" i], [data-test*="key" i], [data-test*="token" i]',
       )) {
         if (!isVisible(element)) continue;
         const value =
-          element instanceof HTMLInputElement ||
+          element.getAttribute("data-clipboard-text") ??
+          element.getAttribute("data-clipboard") ??
+          (element instanceof HTMLInputElement ||
           element instanceof HTMLTextAreaElement
             ? element.value
-            : element.textContent;
+            : element.textContent);
         if (value) {
           values.push({
             value,
@@ -746,6 +763,42 @@ async function readVisibleCredential(
   };
 }
 
+async function readClipboardCredential(
+  page: StagehandPageAdapter,
+  request: BrowserActionRequest,
+): Promise<NonNullable<BrowserObservation["credential"]> | null> {
+  if (!page.evaluate) return null;
+
+  let value: string | null;
+  try {
+    value = await page.evaluate<string | null>(async () => {
+      try {
+        return await navigator.clipboard.readText();
+      } catch {
+        return null;
+      }
+    });
+  } catch {
+    return null;
+  }
+  if (typeof value !== "string" || !looksLikeCredentialValue(value.trim())) {
+    return null;
+  }
+
+  const credentialType = request.credentialTypes.find(isCredentialType);
+  if (!credentialType) return null;
+  return {
+    credentialType,
+    credential: value.trim(),
+    sourceUrl: page.url(),
+    usageNote:
+      "Use this credential with the authentication method documented by the official service.",
+    validationStatus: "not_validated",
+    validationNote:
+      "The credential was read from the verified page's successful Copy action; no harmless validation request was performed.",
+  };
+}
+
 async function waitForVisibleCredential(
   page: StagehandPageAdapter,
   request: BrowserActionRequest,
@@ -803,6 +856,12 @@ function looksLikeCredentialValue(value: string): boolean {
 
 function isCredentialCreationAction(action: string): boolean {
   return /(?:create|generate|issue|reveal|show|copy|submit|confirm).{0,40}(?:api.?key|access.?token|secret|credential|token)|(?:api.?key|access.?token|secret|credential|token).{0,40}(?:create|generate|issue|reveal|show|copy|submit|confirm)/i.test(
+    action,
+  );
+}
+
+function isCredentialCopyAction(action: string): boolean {
+  return /\bcopy\b.{0,50}(?:api.?key|access.?token|secret|credential|token)|(?:api.?key|access.?token|secret|credential|token).{0,50}\bcopy\b/i.test(
     action,
   );
 }
