@@ -602,11 +602,11 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     });
   });
 
-  it("accepts the immediate HTTPS redirect from a verified signup URL", async () => {
+  it("rejects an immediate redirect to an unverified site", async () => {
     let currentUrl = "about:blank";
     const page = {
       goto: vi.fn().mockImplementation(async () => {
-        currentUrl = "https://login.example.test/register";
+        currentUrl = "https://evil.attacker.test/register";
       }),
       url: vi.fn(() => currentUrl),
     };
@@ -634,7 +634,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
 
     await expect(
       session.navigate("https://www.example.test/start-free", signal),
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow("outside the verified domain policy");
   });
 
   it("hands an external identity-provider page to the human without automating it", async () => {
@@ -664,6 +664,11 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     });
     const session = await factory.create(new AbortController().signal);
     await session.setAllowedDomains(["composio.dev"]);
+    const signal = new AbortController().signal;
+
+    await expect(
+      session.navigate("https://composio.dev/auth", signal),
+    ).resolves.toBeUndefined();
 
     await expect(
       session.execute(
@@ -673,7 +678,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
           credentialTypes: ["api_key"],
           officialSources: ["https://composio.dev/auth"],
         },
-        new AbortController().signal,
+        signal,
       ),
     ).resolves.toMatchObject({
       kind: "human_required",

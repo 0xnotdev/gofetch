@@ -219,7 +219,12 @@ class StagehandBrowserSession implements BrowserSession {
       timeoutMs: 45_000,
     });
     throwIfAborted(signal);
-    this.#trustInitialRedirect(page.url());
+    if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+      // Keep third-party identity pages outside the agent's trusted domain set.
+      // execute() will immediately return a human handoff for this same page.
+      return;
+    }
+    this.#assertAllowedUrl(page.url());
   }
 
   async execute(
@@ -409,16 +414,6 @@ class StagehandBrowserSession implements BrowserSession {
     ) {
       throw new Error("Browser navigation moved outside the verified domain policy.");
     }
-  }
-
-  #trustInitialRedirect(value: string): void {
-    const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password) {
-      throw new Error("Browser navigation moved outside the verified domain policy.");
-    }
-    this.#allowedDomains.add(url.hostname);
-    const root = registrableDomain(url.hostname);
-    if (root) this.#allowedSiteRoots.add(root);
   }
 
   #isAllowedHostname(hostname: string): boolean {

@@ -397,6 +397,25 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 84 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
 
+### External-identity redirect handoff correction
+
+**Status:** implementation complete; deployed retest pending
+
+**Reported symptom:** the starting Composio route immediately redirected to Google account creation, but that redirect was accidentally promoted to a trusted browser domain before the human-handoff check ran.
+
+**Delivered:**
+
+- An initial redirect to a recognized external identity provider remains untrusted and is immediately exposed as a same-session human handoff.
+- Removed the unsafe blanket trust of immediate redirects; a normal redirect must now be on a verified official service domain, and an unrelated redirect is rejected.
+- The browser operator is never invoked on the Google identity page before the user takes over.
+
+**Verification evidence:**
+
+- Regression test drives `composio.dev → accounts.google.com` through `navigate()` then verifies `awaiting_human` without a model extraction.
+- Regression test rejects an immediate `evil.attacker.test` redirect.
+- `npm test` — passed; 84 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -421,3 +440,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Generic direct-API-key path corrected and deployed | `b0c7c79`; 73 tests and production build passed; deployed Composio now reaches real shared-browser human handoff |
 | 2026-08-08 | Resumed-session recovery added | `73487eb` plus a pending follow-up; 83 tests, typecheck, lint, production build, and diff check passed; a transient post-handback browser failure retries in the same session, preserves any inline value, and double failures are safely diagnosable |
 | 2026-08-08 | Verified sibling-domain continuation added | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; official docs-to-dashboard/account transitions continue after human login while unrelated domains remain blocked |
+| 2026-08-08 | External-identity redirect handoff corrected | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; initial Google identity redirects pause for the human rather than entering the agent policy |
