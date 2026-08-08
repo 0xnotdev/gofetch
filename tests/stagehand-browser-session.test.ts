@@ -912,6 +912,66 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(extract).toHaveBeenCalledOnce();
   });
 
+  it("brings the active identity tab to the Live View foreground before handoff", async () => {
+    const docsPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://docs.example.test/reference/authentication"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+    };
+    const identityPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://accounts.google.com/signin"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      sendCDP: vi.fn().mockResolvedValue(undefined),
+    };
+    const setActivePage = vi.fn();
+    const stagehand = ({
+      browserbaseSessionID: "bb-foreground-identity",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-foreground-identity",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: {
+        pages: vi.fn().mockReturnValue([docsPage, identityPage]),
+        activePage: vi.fn().mockReturnValue(identityPage),
+        setActivePage,
+      },
+      extract: vi.fn(),
+      act: vi.fn(),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Sign in and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: [
+            "https://docs.example.test/reference/authentication",
+          ],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      currentUrl: "https://accounts.google.com/signin",
+    });
+    expect(setActivePage).toHaveBeenCalledWith(identityPage);
+    expect(identityPage.sendCDP).toHaveBeenCalledWith("Page.bringToFront");
+  });
+
   it("uses the surrounding credential modal when the key field has no local label", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

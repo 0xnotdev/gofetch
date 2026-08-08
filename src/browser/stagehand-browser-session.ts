@@ -85,6 +85,7 @@ interface StagehandPageAdapter {
   ): Promise<unknown>;
   url(): string;
   waitForTimeout(timeoutMs: number): Promise<void>;
+  sendCDP?<T = unknown>(method: string, params?: object): Promise<T>;
   evaluate?<T>(pageFunction: () => T | Promise<T>): Promise<T>;
 }
 
@@ -108,6 +109,7 @@ export interface StagehandAdapter {
   context: {
     activePage?(): StagehandPageAdapter | undefined;
     pages(): StagehandPageAdapter[];
+    setActivePage?(page: StagehandPageAdapter): void;
   };
   extract(
     instruction: string,
@@ -242,7 +244,7 @@ class StagehandBrowserSession implements BrowserSession {
   ): Promise<BrowserObservation> {
     let page = this.#page();
     if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-      return externalIdentityHandoff(page.url());
+      return this.#externalIdentityHandoff(page);
     }
     this.#assertAllowedUrl(page.url());
     if (privateInput) {
@@ -261,7 +263,7 @@ class StagehandBrowserSession implements BrowserSession {
       throwIfAborted(signal);
       page = this.#page();
       if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-        return externalIdentityHandoff(page.url());
+        return this.#externalIdentityHandoff(page);
       }
       this.#assertAllowedUrl(page.url());
       if (!inputResult.success) {
@@ -274,6 +276,7 @@ class StagehandBrowserSession implements BrowserSession {
     }
 
     if (!privateInput && (await detectVisibleHumanGate(page)) === true) {
+      await this.#focusForHumanHandoff(page);
       return {
         kind: "human_required",
         summary:
@@ -297,7 +300,7 @@ class StagehandBrowserSession implements BrowserSession {
       throwIfAborted(signal);
       page = this.#page();
       if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-        return externalIdentityHandoff(page.url());
+        return this.#externalIdentityHandoff(page);
       }
       this.#assertAllowedUrl(page.url());
 
@@ -350,7 +353,7 @@ class StagehandBrowserSession implements BrowserSession {
         throwIfAborted(signal);
         page = this.#page();
         if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-          return externalIdentityHandoff(page.url());
+          return this.#externalIdentityHandoff(page);
         }
         this.#assertAllowedUrl(page.url());
         await page.waitForTimeout(recoveryResult.success ? 1_000 : 1_500);
@@ -404,7 +407,7 @@ class StagehandBrowserSession implements BrowserSession {
         await page.waitForTimeout(1_500);
         throwIfAborted(signal);
         if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-          return externalIdentityHandoff(page.url());
+          return this.#externalIdentityHandoff(page);
         }
         this.#assertAllowedUrl(page.url());
         continue;
@@ -420,7 +423,7 @@ class StagehandBrowserSession implements BrowserSession {
         throwIfAborted(signal);
         page = this.#page();
         if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-          return externalIdentityHandoff(page.url());
+          return this.#externalIdentityHandoff(page);
         }
         this.#assertAllowedUrl(page.url());
         if (!advanceResult.success) {
@@ -439,6 +442,7 @@ class StagehandBrowserSession implements BrowserSession {
         decision.kind === "blocked" &&
         isHumanSecurityVerification(decision.summary)
       ) {
+        await this.#focusForHumanHandoff(page);
         return {
           kind: "human_required",
           summary: decision.summary,
@@ -460,6 +464,7 @@ class StagehandBrowserSession implements BrowserSession {
         (isExplicitCurrentIdentityPage(decision.summary) ||
           (await hasVisibleHumanGate(page)))
       ) {
+        await this.#focusForHumanHandoff(page);
         return {
           kind: "human_required",
           summary: decision.summary,
@@ -476,6 +481,9 @@ class StagehandBrowserSession implements BrowserSession {
       }
 
       if (decision.kind !== "act") {
+        if (decision.kind === "human_required") {
+          await this.#focusForHumanHandoff(page);
+        }
         const { action: _unusedAction, kind, ...observation } = decision;
         return {
           ...observation,
@@ -496,7 +504,7 @@ class StagehandBrowserSession implements BrowserSession {
       throwIfAborted(signal);
       page = this.#page();
       if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
-        return externalIdentityHandoff(page.url());
+        return this.#externalIdentityHandoff(page);
       }
       this.#assertAllowedUrl(page.url());
       const noActionFound = isNoActionFound(actionResult.message);
@@ -565,6 +573,26 @@ class StagehandBrowserSession implements BrowserSession {
 
   async close(): Promise<void> {
     await this.#stagehand.close({ force: true });
+  }
+
+  async #externalIdentityHandoff(
+    page: StagehandPageAdapter,
+  ): Promise<BrowserObservation> {
+    await this.#focusForHumanHandoff(page);
+    return externalIdentityHandoff(page.url());
+  }
+
+  async #focusForHumanHandoff(page: StagehandPageAdapter): Promise<void> {
+    this.#stagehand.context.setActivePage?.(page);
+    await page.sendCDP?.("Page.bringToFront").catch(() => undefined);
+    await page.sendCDP?.("Runtime.enable").catch(() => undefined);
+    await page
+      .sendCDP?.("Runtime.evaluate", {
+        expression: "window.focus()",
+        awaitPromise: true,
+        userGesture: true,
+      })
+      .catch(() => undefined);
   }
 
   #page(): StagehandPageAdapter {
