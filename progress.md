@@ -675,7 +675,9 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Active-page truth, account-route priority, and paused-run replacement
 
-**Status:** implementation complete; deployed recheck pending
+**Status:** implementation complete and pushed; deployed recheck pending
+
+**Implementation commit:** `2e892d2`
 
 **Reported symptoms:** the human handoff claimed an external identity provider while Live View visibly showed documentation, and a retry then ended with `Another browser run is already active.`
 
@@ -736,4 +738,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Visible-modal-before-recovery ordering corrected | Pending commit; screenshot-equivalent malformed-output/visible-key repro corrected; 94 tests and full production verification pass |
 | 2026-08-08 | Immediate pre-login handoff added and deployed | `9674044`; hosted Composio reached the human takeover in 15.2 seconds, the same-session regression resumes to a credential, and 95 tests plus full production verification pass |
 | 2026-08-08 | Multi-page generated-key modal capture added | `ddfd6f3`; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
-| 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | Pending commit; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |
+| 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | `2e892d2`; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |
