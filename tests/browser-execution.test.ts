@@ -238,6 +238,49 @@ describe("BrowserRunCoordinator", () => {
     expect(session.close).toHaveBeenCalledOnce();
   });
 
+  it("keeps an inline human value ephemeral when retrying a resumed session", async () => {
+    const { factory, session } = createBrowserFake();
+    vi.mocked(session.execute)
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "An email code is required.",
+        currentUrl: "https://accounts.example.test/verify",
+        intervention: {
+          kind: "otp",
+          prompt: "Enter the emailed code.",
+          reason: "Email ownership must be verified.",
+          sensitive: true,
+        },
+      })
+      .mockRejectedValueOnce(new Error("temporary CDP transport reset"))
+      .mockResolvedValueOnce({
+        kind: "completed",
+        summary: "Verification completed.",
+        currentUrl: "https://accounts.example.test/settings",
+      });
+    const coordinator = new BrowserRunCoordinator({ factory });
+
+    const paused = await coordinator.run(signupPlan);
+    if (paused.status !== "awaiting_human") {
+      throw new Error("Expected the browser run to pause.");
+    }
+
+    await coordinator.resume("session-123", {
+      interventionId: paused.intervention.id,
+      value: "123456",
+    });
+
+    expect(session.execute).toHaveBeenNthCalledWith(
+      3,
+      expect.any(Object),
+      expect.any(AbortSignal),
+      {
+        value: "123456",
+        description: "Enter the emailed code.",
+      },
+    );
+  });
+
   it("passes private human input as an ephemeral value on same-session resume", async () => {
     const { factory, session } = createBrowserFake();
     vi.mocked(session.execute)

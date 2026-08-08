@@ -275,6 +275,7 @@ export class BrowserRunCoordinator {
           observation = await session.execute(
             active.request,
             active.controller.signal,
+            privateInput,
           );
         } catch (retryError) {
           const result = this.#failureFor(active, retryError);

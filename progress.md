@@ -368,15 +368,15 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 **Delivered:**
 
-- Retries one transient `execute` failure in the existing Browserbase session after handback; it does not create a replacement session or ask the human to repeat login.
+- Retries one transient `execute` failure in the existing Browserbase session after handback; it does not create a replacement session or ask the human to repeat login. An inline OTP/value remains ephemeral and is preserved for that retry.
 - Preserves the human/agent control boundary while retrying and still closes the session on a genuine terminal failure.
 - Surfaces a short, redacted browser diagnostic only after the retry fails, so the next real provider issue is actionable without exposing credentials.
 - Adds regression tests for both a successful resumed-session retry and a double failure with Browserbase-like secret redaction.
 
 **Verification evidence:**
 
-- `npm test` — passed; 82 tests across 14 files.
-- `npm run typecheck` and `npm run lint` — passed.
+- `npm test` — passed; 83 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
 - A production build and deployed handback retest remain required before this can count as the final credential-retrieval acceptance.
 
 ## Build log
@@ -401,4 +401,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Fresh-account quota diagnosis and precise deployed error handling | New zero-usage project also returned Browserbase HTTP 402; targeted route test plus typecheck, lint, and production build passed; real signup resume still pending browser access |
 | 2026-08-08 | Fresh-account deployment diagnosis corrected | Direct remote session and deployed NASA planning succeeded after Render secret verification; prior 402 was an old-worker rollout race, not an entitlement failure |
 | 2026-08-08 | Generic direct-API-key path corrected and deployed | `b0c7c79`; 73 tests and production build passed; deployed Composio now reaches real shared-browser human handoff |
-| 2026-08-08 | Resumed-session recovery added | Pending commit; 82 tests, typecheck, and lint passed; a transient post-handback browser failure retries in the same session and double failures are safely diagnosable |
+| 2026-08-08 | Resumed-session recovery added | `73487eb` plus a pending follow-up; 83 tests, typecheck, lint, production build, and diff check passed; a transient post-handback browser failure retries in the same session, preserves any inline value, and double failures are safely diagnosable |
