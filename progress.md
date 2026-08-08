@@ -704,7 +704,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Live View foreground synchronization
 
-**Status:** implementation deployed; hosted foreground recheck depends on account-route discovery below
+**Status:** implementation deployed and hosted foreground handoff verified
 
 **Implementation commit:** `fdd9375`
 
@@ -722,12 +722,13 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 - The exact two-tab regression was observed returning a Google handoff without ever foregrounding the Google page; it now calls both Stagehand page activation and Chrome `Page.bringToFront` before returning the handoff.
 - Render reported the implementation commit live before the hosted acceptance run began.
+- A fresh hosted Composio run reached `awaiting_human` with the embedded Live View address bar on the Composio dashboard login page rather than documentation. The test session was cancelled cleanly without entering identity or credential data.
 - `npm test` - passed; 101 tests across 14 files.
 - `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
 ### Focused verified account-route discovery
 
-**Status:** implementation complete and pushed; hosted recheck pending
+**Status:** implementation deployed and hosted account-route discovery verified
 
 **Implementation commit:** `e8ae074`
 
@@ -745,6 +746,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 **Verification evidence:**
 
 - The exact docs-only initial-search regression was observed making one search and starting from documentation; it now performs the focused search, fetches the verified same-site login route, and selects it as `signupUrl`.
+- A fresh hosted `composio ai` run selected `https://composio.dev/auth` as its official account source and proceeded to the human login handoff instead of ending blocked on documentation.
 - `npm test` - passed; 102 tests across 14 files.
 - `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
@@ -785,5 +787,5 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Immediate pre-login handoff added and deployed | `9674044`; hosted Composio reached the human takeover in 15.2 seconds, the same-session regression resumes to a credential, and 95 tests plus full production verification pass |
 | 2026-08-08 | Multi-page generated-key modal capture added | `ddfd6f3`; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
 | 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | `2e892d2`; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |
-| 2026-08-08 | Live View foreground synchronization added | `fdd9375`; exact background-identity/visible-docs handoff regression corrected; 101 tests and full local verification pass |
-| 2026-08-08 | Focused verified account-route discovery added | `e8ae074`; exact hosted docs-only planning failure corrected generically; 102 tests and full local verification pass |
+| 2026-08-08 | Live View foreground synchronization added | `fdd9375`; exact background-identity/visible-docs handoff regression corrected; hosted Live View displayed the actual login page |
+| 2026-08-08 | Focused verified account-route discovery added | `e8ae074`; exact hosted docs-only planning failure corrected generically; hosted Composio selected `/auth` and reached HITL |
