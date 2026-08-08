@@ -93,7 +93,7 @@ The complete product definition, architecture, acceptance criteria, and Checkpoi
 
 - Generic Stagehand/Browserbase session adapter with semantic DOM-mode execution and no named-app routing.
 - Dynamic exact-host domain policy derived only from secure, credential-free official plan URLs.
-- One-active-run locking, three-session process quota, rapid-start throttling, 12-minute timeout, and explicit cancellation.
+- One-active-run locking, optional explicit session-start caps, rapid-start throttling, a 12-minute timeout, and explicit cancellation. The deployed runtime relies on Browserbase for the real account allowance instead of imposing a non-replenishing process-lifetime cap.
 - Hard payment/card stop, CAPTCHA auto-solving disabled, recording/logging disabled, and force-close cleanup on terminal and partial-initialization paths.
 - Server execution and cancellation endpoints plus a quota-conscious one-session connectivity command.
 - Stagehand's transitive high-severity `undici` advisory is patched through an override. The remaining audit findings are 17 low-severity AI SDK advisories for which Stagehand 3.7.1 has no compatible patched 3.x dependency release.
@@ -774,6 +774,29 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` - passed; 103 tests across 14 files.
 - `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
+### Non-replenishing process session cap removed
+
+**Status:** implementation complete and pushed; deployment settling
+
+**Implementation commit:** `11f676e`
+
+**Reported symptom:** after three hosted browser checks, every later run ended immediately with `The configured browser-session quota is exhausted.`
+
+**Root cause:** the production coordinator hard-coded `maxSessionStarts: 3` and counted starts for the entire lifetime of the Render worker. The counter never replenished after sessions closed, so the fourth run was rejected locally without contacting Browserbase.
+
+**Delivered:**
+
+- The deployed coordinator no longer imposes a permanent process-lifetime start cap by default.
+- Explicit finite caps remain supported for controlled deployments and deterministic quota tests.
+- One-active-run enforcement, rapid-start throttling, timeout, cancellation, force-close cleanup, and Browserbase's real provider quota remain enforced.
+
+**Verification evidence:**
+
+- The default-coordinator regression was observed rejecting the fourth completed sequential run; it now completes all four and opens four sessions.
+- The explicit finite-cap regression still rejects the run beyond its configured limit without opening another session.
+- `npm test` - passed; 104 tests across 14 files.
+- `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -814,3 +837,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Live View foreground synchronization added | `fdd9375`; exact background-identity/visible-docs handoff regression corrected; hosted Live View displayed the actual login page |
 | 2026-08-08 | Focused verified account-route discovery added | `e8ae074`; exact hosted docs-only planning failure corrected generically; hosted Composio selected `/auth` and reached HITL |
 | 2026-08-08 | Live View target-bound popup handoff added | `283d523`; exact docs-visible/identity-popup mismatch corrected and hosted screenshot-level verification passed |
+| 2026-08-08 | Non-replenishing process session cap removed | `11f676e`; fourth sequential run no longer fails locally; 104 tests and full production verification pass |

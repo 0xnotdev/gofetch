@@ -58,7 +58,7 @@ The final third-party signup pause/resume acceptance is still pending. Browserba
 | Structured success and failure results | Pass | Tests cover validated, unverified, blocker, clarification, technical failure, cancellation, and timeout results. |
 | No GoFetch credential/PII persistence | Pass | In-memory-only run state, private variables, no recording/logging, and secret-redaction tests. |
 | Official-domain restriction and server-side keys | Pass | Exact source allowlisting, dynamic domain policy, environment-only provider keys, and tracked-secret scan. |
-| Quota, concurrency, cancellation, and timeout controls | Pass | One-active-run lock, three-session process quota, throttle, cancellation, force-close, and 12-minute deadline tests. |
+| Quota, concurrency, cancellation, and timeout controls | Pass | One-active-run lock, optional explicit start cap, provider-quota reporting, throttle, cancellation, force-close, and 12-minute deadline tests. |
 
 ## MVP limitations
 
