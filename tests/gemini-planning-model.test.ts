@@ -465,4 +465,39 @@ describe("GeminiPlanningModel", () => {
       }),
     ).resolves.toMatchObject({ path: "signup_required", signupUrl: accountUrl });
   });
+
+  it("prefers a verified login link over its parent auth page", async () => {
+    const authUrl = "https://www.example.test/auth";
+    const loginUrl = "https://dashboard.example.test/login";
+    const planner = new GeminiPlanningModel({
+      generate: async () => ({
+        workflowCategory: "signup_required",
+        credentialTypes: ["api_key"],
+        summary: "Sign in and create an API key.",
+        signupUrl: authUrl,
+        blocker: null,
+        publicCredential: null,
+      }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "Example Platform",
+        target: {
+          inputMode: "direct",
+          appName: "Example Platform",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [authUrl],
+        },
+        documents: [
+          {
+            url: authUrl,
+            content: `<a href="${loginUrl}">Get started</a>`,
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({ path: "signup_required", signupUrl: loginUrl });
+  });
 });

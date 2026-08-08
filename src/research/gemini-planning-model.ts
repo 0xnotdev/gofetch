@@ -258,14 +258,14 @@ function documentedSignupUrl(documents: SourceDocument[]): string | null {
       const href = match[1];
       const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
       let score = 0;
-      if (/sign\s*up|create (?:an? )?account|register/i.test(label)) score = 4;
-      else if (/start (?:for )?free|try (?:it )?free/i.test(label)) score = 3;
-      else if (/get started/i.test(label)) score = 2;
-      if (score === 0) continue;
-
       try {
         const url = new URL(href, document.url);
         if (url.protocol === "https:" && !url.username && !url.password) {
+          if (/sign\s*up|create (?:an? )?account|register/i.test(label)) score = 4;
+          else if (/start (?:for )?free|try (?:it )?free/i.test(label)) score = 3;
+          else if (/get started/i.test(label)) score = 2;
+          score = Math.max(score, accountRouteScore(url.toString()));
+          if (score === 0) continue;
           candidates.push({ url: url.toString(), score });
         }
       } catch {
@@ -280,9 +280,10 @@ function documentedSignupUrl(documents: SourceDocument[]): string | null {
 function accountRouteScore(value: string): number {
   try {
     const path = new URL(value).pathname.toLowerCase();
-    if (/(^|\/)(signup|sign-up|register)(\/|$)/.test(path)) return 5;
-    if (/(^|\/)(login|log-in|auth|authenticate)(\/|$)/.test(path)) return 4;
-    if (/(^|\/)(dashboard|console|account)(\/|$)/.test(path)) return 3;
+    if (/(^|\/)(signup|sign-up|register)(\/|$)/.test(path)) return 7;
+    if (/(^|\/)(login|log-in)(\/|$)/.test(path)) return 6;
+    if (/(^|\/)(auth|authenticate)(\/|$)/.test(path)) return 5;
+    if (/(^|\/)(dashboard|console|account)(\/|$)/.test(path)) return 4;
   } catch {
     // Source-document URLs have already been validated, but preserve safe fallback.
   }
