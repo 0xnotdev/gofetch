@@ -474,7 +474,7 @@ async function hasVisibleHumanGate(page: StagehandPageAdapter): Promise<boolean>
 }
 
 function isIdentityAuthenticationBlocker(summary: string): boolean {
-  return /external authentication|third-party (?:login|sign.?in)|sign.?in|log.?in|identity (?:form|provider|verification)|account[- ]owner authentication/i.test(
+  return /external authentication|third-party (?:login|sign\s*in)|sign\s*in|log\s*in|sign(?:ing)?\s*up|register|personal information|identity (?:form|provider|verification|details)|account[- ]owner authentication/i.test(
     summary,
   );
 }

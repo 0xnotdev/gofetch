@@ -479,7 +479,7 @@ describe("BrowserbaseStagehandSessionFactory", () => {
       extract: vi.fn().mockResolvedValue({
         kind: "blocked",
         summary:
-          "The current page is an external authentication flow and requires sign in.",
+          "Cannot proceed without signing up because the current page requires entering personal information.",
       }),
       act: vi.fn(),
     } as unknown) as StagehandAdapter;
