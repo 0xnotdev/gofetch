@@ -702,6 +702,28 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` - passed; 100 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
+### Live View foreground synchronization
+
+**Status:** implementation complete and pushed; hosted recheck pending
+
+**Implementation commit:** `fdd9375`
+
+**Reported symptom:** GoFetch correctly paused for an external identity-provider login, but the embedded Browserbase Live View still showed the documentation tab instead of the sign-in/signup page the human needed to complete.
+
+**Root cause:** Stagehand's `context.activePage()` tracks its most-recent page internally, but that selection does not by itself guarantee that Browserbase Live View is displaying the same Chrome target. GoFetch therefore returned a valid identity handoff for a background tab while the user saw the older documentation tab.
+
+**Delivered:**
+
+- Every human handoff now marks the selected Stagehand page active, activates that exact Chrome target, and focuses its window before returning `human_required`.
+- The synchronization applies generically to external identity providers, visible signup/login forms, OTP/CAPTCHA/security checks, and model-requested browser takeover; it contains no Composio-specific route or selector.
+- Secondary focus commands are best-effort so a browser that does not support one focus primitive does not turn a valid takeover into a technical failure.
+
+**Verification evidence:**
+
+- The exact two-tab regression was observed returning a Google handoff without ever foregrounding the Google page; it now calls both Stagehand page activation and Chrome `Page.bringToFront` before returning the handoff.
+- `npm test` - passed; 101 tests across 14 files.
+- `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -739,3 +761,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Immediate pre-login handoff added and deployed | `9674044`; hosted Composio reached the human takeover in 15.2 seconds, the same-session regression resumes to a credential, and 95 tests plus full production verification pass |
 | 2026-08-08 | Multi-page generated-key modal capture added | `ddfd6f3`; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
 | 2026-08-08 | Active-page truth, account-route priority, and paused-run replacement added | `2e892d2`; exact false-HITL, dropped-auth-route, and stale-active-run regressions corrected; 100 tests and full production verification pass |
+| 2026-08-08 | Live View foreground synchronization added | `fdd9375`; exact background-identity/visible-docs handoff regression corrected; 101 tests and full local verification pass |
