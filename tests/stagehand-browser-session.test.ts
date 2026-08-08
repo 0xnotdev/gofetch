@@ -474,6 +474,128 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(page.waitForTimeout).toHaveBeenCalledWith(1_500);
   });
 
+  it("recovers on an authenticated dashboard after repeated malformed observations", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+    };
+    const extract = vi
+      .fn()
+      .mockResolvedValueOnce({ unexpected: "dashboard is hydrating" })
+      .mockResolvedValueOnce({ kind: "act" })
+      .mockResolvedValueOnce({
+        kind: "credential_obtained",
+        summary: "Created an API key.",
+        credential: {
+          credentialType: "api_key",
+          credential: "secret-example-recovered",
+          sourceUrl: "https://dashboard.example.test/settings/api-keys",
+          usageNote: "Use the documented Authorization header.",
+          validationStatus: "not_validated",
+          validationNote: "No harmless validation endpoint was available.",
+        },
+      });
+    const act = vi.fn().mockResolvedValue({
+      success: true,
+      message: "Advanced the API-key workflow.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-malformed-dashboard",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-malformed-dashboard",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: { credential: "secret-example-recovered" },
+    });
+    expect(act).toHaveBeenCalledWith(
+      expect.stringContaining("structured inspection was inconclusive"),
+    );
+    expect(extract).toHaveBeenCalledTimes(3);
+  });
+
+  it("fails closed after two malformed-dashboard recovery actions", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+    };
+    const extract = vi.fn().mockResolvedValue({ malformed: true });
+    const act = vi.fn().mockResolvedValue({
+      success: false,
+      message: "No safe action found.",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-malformed-dashboard-limit",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-malformed-dashboard-limit",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "blocked",
+      summary:
+        "The authenticated page remained unreadable after two safe recovery attempts.",
+    });
+    expect(act).toHaveBeenCalledTimes(2);
+    expect(extract).toHaveBeenCalledTimes(6);
+  });
+
   it("continues through official navigation when human action is claimed on a documentation page", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

@@ -416,6 +416,28 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 84 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check` — passed.
 
+### Authenticated-dashboard structured recovery
+
+**Status:** implementation complete; deployed retest pending
+
+**Reported symptom:** after successful login and unchanged-session handback, two schema-invalid dashboard observations immediately ended the run with `The browser could not produce a safe structured next step.`
+
+**Root cause:** the browser loop treated a second malformed structured observation as terminal even when Stagehand could still perform safe semantic actions on the authenticated page.
+
+**Delivered:**
+
+- After two malformed observations, performs one bounded mechanical recovery step toward API keys, credentials, access tokens, developer settings, or project settings on the verified service, then re-inspects the page.
+- The recovery may create or label a key only with non-sensitive values; identity, OTP, CAPTCHA, payment, card, and credential entry remain forbidden.
+- Allows at most two recovery actions and then fails closed with a precise authenticated-page reason, preventing an unbounded loop.
+- Preserves the existing external-identity handoff and verified-domain checks after every recovery action.
+
+**Verification evidence:**
+
+- The exact post-login two-malformed-observation regression was observed failing before the fix and now reaches `credential_obtained` after recovery.
+- A companion test verifies the two-recovery ceiling and terminal reason.
+- `npm test` — passed; 86 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -441,3 +463,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Resumed-session recovery added | `73487eb` plus a pending follow-up; 83 tests, typecheck, lint, production build, and diff check passed; a transient post-handback browser failure retries in the same session, preserves any inline value, and double failures are safely diagnosable |
 | 2026-08-08 | Verified sibling-domain continuation added | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; official docs-to-dashboard/account transitions continue after human login while unrelated domains remain blocked |
 | 2026-08-08 | External-identity redirect handoff corrected | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; initial Google identity redirects pause for the human rather than entering the agent policy |
+| 2026-08-08 | Authenticated-dashboard structured recovery added | Pending commit; 86 tests, typecheck, lint, production build, and diff check passed; repeated malformed post-login observations now trigger bounded safe progress instead of immediate termination |

@@ -265,6 +265,7 @@ class StagehandBrowserSession implements BrowserSession {
     }
 
     let malformedStructuredResponses = 0;
+    let malformedRecoveryActions = 0;
     for (let stepNumber = 1; stepNumber <= 12; stepNumber += 1) {
       throwIfAborted(signal);
       const extracted = await this.#stagehand.extract(
@@ -284,11 +285,30 @@ class StagehandBrowserSession implements BrowserSession {
           this.#assertAllowedUrl(page.url());
           continue;
         }
-        return {
-          kind: "blocked",
-          summary: "The browser could not produce a safe structured next step.",
-          currentUrl: page.url(),
-        };
+
+        if (malformedRecoveryActions >= 2) {
+          return {
+            kind: "blocked",
+            summary:
+              "The authenticated page remained unreadable after two safe recovery attempts.",
+            currentUrl: page.url(),
+          };
+        }
+
+        malformedRecoveryActions += 1;
+        const recoveryResult = await this.#stagehand.act(
+          "The structured inspection was inconclusive. Take exactly one safe mechanical step on the current verified service toward API keys, access tokens, credentials, developer settings, or project settings. If a create-key form is already visible, fill only a non-sensitive required label with GoFetch or click its create/generate button. Never enter identity, login, OTP, CAPTCHA, payment, card, or credential values, and never leave the current verified service.",
+        );
+        throwIfAborted(signal);
+        if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+          return externalIdentityHandoff(page.url());
+        }
+        this.#assertAllowedUrl(page.url());
+        await page.waitForTimeout(recoveryResult.success ? 1_000 : 1_500);
+        throwIfAborted(signal);
+        this.#assertAllowedUrl(page.url());
+        malformedStructuredResponses = 0;
+        continue;
       }
 
       malformedStructuredResponses = 0;
