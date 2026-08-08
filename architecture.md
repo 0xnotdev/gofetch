@@ -29,7 +29,7 @@ GoFetch writes no PII or acquired credential to storage or logs. Browserbase pro
 
 ## Lifecycle and resource limits
 
-The runtime permits one active browser run per process, throttles rapid starts, caps process session creation, applies a 12-minute deadline below Browserbase's 15-minute session maximum, and force-closes on success, failure, timeout, cancellation, or partial initialization. Planning uses one short non-recorded Model Gateway session when a direct Gemini key is absent.
+The runtime permits one active browser run per process, throttles rapid starts, applies a 12-minute deadline, reports Browserbase provider-quota failures, and force-closes on success, failure, timeout, cancellation, or partial initialization. A finite start cap can be configured for controlled environments, but production does not impose a non-replenishing process-lifetime limit. Planning uses one short non-recorded Model Gateway session when a direct Gemini key is absent.
 
 ## Deployment choice
 
