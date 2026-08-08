@@ -285,6 +285,20 @@ class StagehandBrowserSession implements BrowserSession {
 
       const parsed = browserObservationSchema.safeParse(extracted);
       if (!parsed.success) {
+        const alreadyVisibleCredential = await readVisibleCredential(
+          page,
+          request,
+        );
+        if (alreadyVisibleCredential) {
+          return {
+            kind: "credential_obtained",
+            summary:
+              "Retrieved the visible generated credential before browser recovery.",
+            currentUrl: page.url(),
+            credential: alreadyVisibleCredential,
+          };
+        }
+
         malformedStructuredResponses += 1;
         if (malformedStructuredResponses === 1) {
           await page.waitForTimeout(1_500);
@@ -304,7 +318,7 @@ class StagehandBrowserSession implements BrowserSession {
 
         malformedRecoveryActions += 1;
         const recoveryResult = await this.#stagehand.act(
-          "The structured inspection was inconclusive. Take exactly one safe mechanical step on the current verified service toward API keys, access tokens, credentials, developer settings, or project settings. If a create-key form is already visible, fill only a non-sensitive required label with GoFetch or click its create/generate button. Never enter identity, login, OTP, CAPTCHA, payment, card, or credential values, and never leave the current verified service.",
+          "The structured inspection was inconclusive. Take exactly one safe mechanical step on the current verified service toward API keys, access tokens, credentials, developer settings, or project settings. If a newly generated credential is visible, click the Copy control beside the secret value, not beside its name. Otherwise, if a create-key form is visible, fill only a non-sensitive required label with GoFetch or click its create/generate button. Never enter identity, login, OTP, CAPTCHA, payment, card, or credential values, and never leave the current verified service.",
         );
         throwIfAborted(signal);
         if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
@@ -314,21 +328,37 @@ class StagehandBrowserSession implements BrowserSession {
         await page.waitForTimeout(recoveryResult.success ? 1_000 : 1_500);
         throwIfAborted(signal);
         this.#assertAllowedUrl(page.url());
-        if (recoveryResult.success) {
-          const visibleCredential = await waitForVisibleCredential(
+        if (
+          recoveryResult.success &&
+          isCredentialCopyAction(recoveryResult.message)
+        ) {
+          const clipboardCredential = await readClipboardCredential(
             page,
             request,
-            signal,
           );
-          if (visibleCredential) {
+          if (clipboardCredential) {
             return {
               kind: "credential_obtained",
               summary:
-                "Retrieved a newly visible credential directly from the official page.",
+                "Retrieved the generated credential from the verified page's Copy action.",
               currentUrl: page.url(),
-              credential: visibleCredential,
+              credential: clipboardCredential,
             };
           }
+        }
+        const visibleCredential = await waitForVisibleCredential(
+          page,
+          request,
+          signal,
+        );
+        if (visibleCredential) {
+          return {
+            kind: "credential_obtained",
+            summary:
+              "Retrieved a newly visible credential directly from the official page.",
+            currentUrl: page.url(),
+            credential: visibleCredential,
+          };
         }
         malformedStructuredResponses = 0;
         continue;

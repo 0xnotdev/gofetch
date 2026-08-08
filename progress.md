@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the remote-copy credential channel is deployed and rechecked.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the visible-modal-before-recovery ordering fix is deployed and rechecked.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -596,6 +596,28 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 93 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Visible credential before malformed recovery
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptom:** the Composio `API key created` modal visibly contained the one-time `ak_…` credential, but structured observations were malformed and the run ended `The authenticated page remained unreadable after two safe recovery attempts.`
+
+**Root cause:** malformed-output handling scanned for a credential only after a recovery action reported success. When the key modal was already open and the recovery action found nothing else to do, the visible key was skipped and the two-recovery ceiling fired.
+
+**Delivered:**
+
+- Scans for an already-visible credential immediately after every malformed observation, before waiting, incrementing recovery counts, or invoking another action.
+- Scans again after a recovery action regardless of whether that action reports success.
+- Recovery instructions now prioritize the Copy control adjacent to a newly generated secret and explicitly exclude copy controls beside key names.
+- Reads the remote clipboard when a successful recovery result reports a credential-copy action.
+
+**Verification evidence:**
+
+- Screenshot-equivalent regression—malformed observation, visible `ak_…` modal, and a recovery action that would return `No action found`—was observed reaching `blocked` before the fix and now returns `credential_obtained` without calling recovery.
+- The delayed-render variant now retrieves the key on its next inspection without an unnecessary click.
+- `npm test` — passed; 94 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -629,3 +651,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Credential-name false positive rejected | Pending commit; exact `research_agent_composio` repro corrected; 92 tests and full production verification pass |
 | 2026-08-08 | Context-aware credential field selection added | Pending commit; exact `Composio_API_Key` and digit-bearing Name-field regressions corrected; 92 tests and full production verification pass |
 | 2026-08-08 | Remote clipboard credential channel added | Pending commit; exact post-create Copy/clipboard/twelve-step repro corrected; 93 tests and full production verification pass |
+| 2026-08-08 | Visible-modal-before-recovery ordering corrected | Pending commit; screenshot-equivalent malformed-output/visible-key repro corrected; 94 tests and full production verification pass |
