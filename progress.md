@@ -553,6 +553,28 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 92 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Context-aware credential field selection
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptom:** a second mixed-case key name, `Composio_API_Key`, bypassed the lowercase snake-case rejection and was returned as the API credential.
+
+**Root cause:** value-shape heuristics remained capable of confusing mixed-case or digit-bearing human labels with opaque secrets, and the extractor did not use the candidate's local field or table-column semantics.
+
+**Delivered:**
+
+- Collects local semantic context from input attributes, associated labels, nearest labels, preceding labels, table headers, and ARIA grid column headers.
+- Rejects any candidate sourced from a Name, Label, or Description field/column at both the in-page and server validation boundaries.
+- Rejects case-insensitive human-readable word sequences such as `Composio_API_Key`; a recognized prefix is accepted only when followed by a sufficiently opaque tail.
+- Continues scanning after rejected names and returns a later real token. If only names or masked values exist, no credential success is emitted.
+
+**Verification evidence:**
+
+- Exact `Composio_API_Key` screenshot value and a digit-bearing `ComposioKey2026` Name-field variant were both observed being returned before the respective checks; both are now skipped in favor of the subsequent `ak_…` token.
+- The name-only bounded-reinspection regression remains terminal rather than returning false success.
+- `npm test` — passed; 92 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -584,3 +606,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | No-action credential recovery added | Pending commit; 91 tests, typecheck, lint, production build, and diff check passed; `No action found` now checks for and returns an already visible key before bounded reinspection |
 | 2026-08-08 | First full hosted credential run succeeded; embedded Google handoff repaired | Pending commit; user-confirmed same-session login, agent-created key, and returned credential; 92 tests and full production verification pass for alternate identity UI |
 | 2026-08-08 | Credential-name false positive rejected | Pending commit; exact `research_agent_composio` repro corrected; 92 tests and full production verification pass |
+| 2026-08-08 | Context-aware credential field selection added | Pending commit; exact `Composio_API_Key` and digit-bearing Name-field regressions corrected; 92 tests and full production verification pass |

@@ -96,6 +96,7 @@ interface StagehandAgentResultAdapter {
 interface VisibleCredentialCandidate {
   value: string;
   context: string;
+  localContext?: string;
 }
 
 export interface StagehandAdapter {
@@ -567,7 +568,54 @@ async function readVisibleCredential(
           .filter(Boolean)
           .join(" ")
           .slice(0, 1_000);
-      const values: Array<{ value: string; context: string }> = [];
+      const columnHeader = (element: Element): string => {
+        const cell = element.closest(
+          'td, th, [role="cell"], [role="gridcell"]',
+        );
+        if (!cell) return "";
+        const container = cell.closest('table, [role="grid"]');
+        if (!container) return "";
+        const ariaColumnIndex = cell.getAttribute("aria-colindex");
+        if (ariaColumnIndex) {
+          const header = Array.from(
+            container.querySelectorAll('[role="columnheader"]'),
+          ).find(
+            (candidate) =>
+              candidate.getAttribute("aria-colindex") === ariaColumnIndex,
+          );
+          if (header?.textContent) return header.textContent;
+        }
+        const siblings = cell.parentElement
+          ? Array.from(cell.parentElement.children)
+          : [];
+        const index = siblings.indexOf(cell);
+        if (index >= 0) {
+          const headers = Array.from(container.querySelectorAll("th"));
+          if (headers[index]?.textContent) return headers[index].textContent;
+        }
+        return "";
+      };
+      const elementLocalContext = (element: Element): string => {
+        const labels =
+          element instanceof HTMLInputElement ||
+          element instanceof HTMLTextAreaElement
+            ? Array.from(element.labels ?? []).map((label) => label.textContent)
+            : [];
+        return [
+          element.getAttribute("aria-label"),
+          element.getAttribute("name"),
+          element.getAttribute("id"),
+          element.getAttribute("placeholder"),
+          ...labels,
+          element.closest("label")?.textContent,
+          element.previousElementSibling?.textContent,
+          columnHeader(element),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .slice(0, 500);
+      };
+      const values: Array<VisibleCredentialCandidate> = [];
 
       for (const element of document.querySelectorAll(
         'input, textarea, code, pre, [data-testid*="key" i], [data-testid*="token" i], [data-test*="key" i], [data-test*="token" i]',
@@ -578,7 +626,13 @@ async function readVisibleCredential(
           element instanceof HTMLTextAreaElement
             ? element.value
             : element.textContent;
-        if (value) values.push({ value, context: elementContext(element) });
+        if (value) {
+          values.push({
+            value,
+            context: elementContext(element),
+            localContext: elementLocalContext(element),
+          });
+        }
       }
 
       const walker = document.createTreeWalker(
@@ -592,6 +646,7 @@ async function readVisibleCredential(
           values.push({
             value: textNode.textContent,
             context: elementContext(parent),
+            localContext: elementLocalContext(parent),
           });
         }
         textNode = walker.nextNode();
@@ -599,8 +654,12 @@ async function readVisibleCredential(
 
       for (const entry of values) {
         const value = entry.value.trim();
-        if (contextPattern.test(entry.context) && looksLikeCredential(value)) {
-          return { value, context: entry.context };
+        if (
+          contextPattern.test(entry.context) &&
+          !/\b(?:name|label|description)\b/i.test(entry.localContext ?? "") &&
+          looksLikeCredential(value)
+        ) {
+          return entry;
         }
       }
       return null;
@@ -620,8 +679,24 @@ async function readVisibleCredential(
           /^(?:ak|sk|pk|rk|ghp|gho|ghu|github_pat|xox[baprs]|ya29)[_.-]/i.test(
             value,
           );
+        const prefixTail = knownCredentialPrefix
+          ? value.replace(/^[^_.-]+[_.-]/, "")
+          : "";
+        const opaquePrefixedValue =
+          prefixTail.length >= 12 &&
+          new Set(prefixTail.toLowerCase()).size >= 8 &&
+          (/[0-9+\/=~.]/.test(prefixTail) ||
+            (/[a-z]/.test(prefixTail) && /[A-Z]/.test(prefixTail)));
+        const wordSegments = value.split(/[_-]+/);
         const humanReadableLabel =
-          /^[a-z]+(?:[_-][a-z]+)+$/.test(value) && !knownCredentialPrefix;
+          (!opaquePrefixedValue &&
+            wordSegments.length >= 2 &&
+            wordSegments.every((segment) => /^[A-Za-z]{2,20}$/.test(segment))) ||
+          (!opaquePrefixedValue &&
+            !/\d/.test(value) &&
+            /(?:api|access|client)?(?:key|token|secret|credential)$/i.test(
+              value.replace(/[_-]/g, ""),
+            ));
         const hasSecretSignal =
           knownCredentialPrefix ||
           /[0-9+\/=~.]/.test(value) ||
@@ -640,13 +715,16 @@ async function readVisibleCredential(
   if (
     !candidate ||
     typeof candidate.value !== "string" ||
-    typeof candidate.context !== "string"
+    typeof candidate.context !== "string" ||
+    (candidate.localContext !== undefined &&
+      typeof candidate.localContext !== "string")
   ) {
     return null;
   }
   const value = candidate.value.trim();
   if (
     !looksLikeCredentialValue(value) ||
+    /\b(?:name|label|description)\b/i.test(candidate.localContext ?? "") ||
     !/api.?key|access.?token|secret|credential|bearer|personal.?access|client.?secret/i.test(
       candidate.context,
     )
@@ -698,8 +776,24 @@ function looksLikeCredentialValue(value: string): boolean {
     /^(?:ak|sk|pk|rk|ghp|gho|ghu|github_pat|xox[baprs]|ya29)[_.-]/i.test(
       value,
     );
+  const prefixTail = knownCredentialPrefix
+    ? value.replace(/^[^_.-]+[_.-]/, "")
+    : "";
+  const opaquePrefixedValue =
+    prefixTail.length >= 12 &&
+    new Set(prefixTail.toLowerCase()).size >= 8 &&
+    (/[0-9+\/=~.]/.test(prefixTail) ||
+      (/[a-z]/.test(prefixTail) && /[A-Z]/.test(prefixTail)));
+  const wordSegments = value.split(/[_-]+/);
   const humanReadableLabel =
-    /^[a-z]+(?:[_-][a-z]+)+$/.test(value) && !knownCredentialPrefix;
+    (!opaquePrefixedValue &&
+      wordSegments.length >= 2 &&
+      wordSegments.every((segment) => /^[A-Za-z]{2,20}$/.test(segment))) ||
+    (!opaquePrefixedValue &&
+      !/\d/.test(value) &&
+      /(?:api|access|client)?(?:key|token|secret|credential)$/i.test(
+        value.replace(/[_-]/g, ""),
+      ));
   const hasSecretSignal =
     knownCredentialPrefix ||
     /[0-9+\/=~.]/.test(value) ||
