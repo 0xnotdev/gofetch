@@ -355,6 +355,25 @@ class StagehandBrowserSession implements BrowserSession {
 
       if (
         decision.kind === "blocked" &&
+        isHumanSecurityVerification(decision.summary)
+      ) {
+        return {
+          kind: "human_required",
+          summary: decision.summary,
+          intervention: {
+            kind: "captcha",
+            prompt:
+              "Complete the security verification in the live browser, then hand control back.",
+            reason:
+              "The current page is presenting a human-only bot or security verification.",
+            sensitive: false,
+          },
+          currentUrl: page.url(),
+        };
+      }
+
+      if (
+        decision.kind === "blocked" &&
         isIdentityAuthenticationBlocker(decision.summary) &&
         (await hasVisibleHumanGate(page))
       ) {
@@ -520,6 +539,12 @@ async function hasVisibleHumanGate(page: StagehandPageAdapter): Promise<boolean>
 
 function isIdentityAuthenticationBlocker(summary: string): boolean {
   return /external authentication|third-party (?:login|sign\s*in)|sign\s*in|log\s*in|sign(?:ing)?\s*up|register|personal information|identity (?:form|provider|verification|details)|account[- ]owner authentication/i.test(
+    summary,
+  );
+}
+
+function isHumanSecurityVerification(summary: string): boolean {
+  return /cloudflare|turnstile|hcaptcha|re-?captcha|captcha|security (?:check|verification|challenge)|bot (?:check|detection|protection|verification)|check(?:ing)? (?:if|whether) (?:the )?user is a bot|verify (?:that )?you(?:'re| are) human|prove (?:that )?you(?:'re| are) human/i.test(
     summary,
   );
 }

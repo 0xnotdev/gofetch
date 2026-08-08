@@ -438,6 +438,26 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 86 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Security-verification human handoff
+
+**Status:** implementation complete; deployed retest pending
+
+**Reported symptom:** after login, an automated Cloudflare bot check was returned as a terminal target blocker instead of pausing the live session for the account owner.
+
+**Root cause:** only identity/login blocker wording was normalized into a human handoff; security-verification and CAPTCHA wording passed through as `blocked`.
+
+**Delivered:**
+
+- Converts observed Cloudflare, Turnstile, CAPTCHA, human-verification, bot-check, and security-challenge blockers into a same-session `captcha` intervention.
+- The agent never solves or bypasses the challenge. The human completes it in Live View, hands control back, and the browser resumes from that exact session.
+- Does not invoke a mechanical agent action on the challenge page.
+
+**Verification evidence:**
+
+- The exact reported Cloudflare sentence was observed returning `blocked` before the fix and now returns `human_required` with `intervention.kind: captcha`.
+- `npm test` — passed; 87 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -464,3 +484,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Verified sibling-domain continuation added | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; official docs-to-dashboard/account transitions continue after human login while unrelated domains remain blocked |
 | 2026-08-08 | External-identity redirect handoff corrected | Pending commit; 84 tests, typecheck, lint, production build, and diff check passed; initial Google identity redirects pause for the human rather than entering the agent policy |
 | 2026-08-08 | Authenticated-dashboard structured recovery added | Pending commit; 86 tests, typecheck, lint, production build, and diff check passed; repeated malformed post-login observations now trigger bounded safe progress instead of immediate termination |
+| 2026-08-08 | Security-verification handoff added | Pending commit; 87 tests, typecheck, lint, production build, and diff check passed; Cloudflare/CAPTCHA/bot checks now pause the same live session for human completion |

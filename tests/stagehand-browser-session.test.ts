@@ -724,6 +724,59 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     });
   });
 
+  it("hands a reported Cloudflare security check to the human", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://dashboard.example.test/api-keys"),
+      evaluate: vi.fn().mockResolvedValue(false),
+    };
+    const act = vi.fn();
+    const stagehand = ({
+      browserbaseSessionID: "bb-cloudflare-handoff",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-cloudflare-handoff",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract: vi.fn().mockResolvedValue({
+        kind: "blocked",
+        summary:
+          "The page is performing a security verification to check if the user is a bot, preventing further navigation. This is an automated Cloudflare check.",
+      }),
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "human_required",
+      intervention: {
+        kind: "captcha",
+        sensitive: false,
+      },
+      currentUrl: "https://dashboard.example.test/api-keys",
+    });
+    expect(act).not.toHaveBeenCalled();
+  });
+
   it("rejects an immediate redirect to an unverified site", async () => {
     let currentUrl = "about:blank";
     const page = {
