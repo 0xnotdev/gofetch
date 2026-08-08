@@ -4,16 +4,15 @@ import { buildCredentialPlan } from "../src/research/build-credential-plan";
 
 describe("buildCredentialPlan", () => {
   it("captures an officially documented public demo credential without a browser", async () => {
+    const search = vi.fn(async () => [
+      {
+        title: "Example API authentication",
+        url: "https://developers.example.test/demo-key",
+      },
+    ]);
     const plan = await buildCredentialPlan("Example public API", {
       research: {
-        async search() {
-          return [
-            {
-              title: "Example API authentication",
-              url: "https://developers.example.test/demo-key",
-            },
-          ];
-        },
+        search,
         async fetch(url) {
           return {
             url,
@@ -60,6 +59,9 @@ describe("buildCredentialPlan", () => {
         credentialType: "public_demo_key",
       },
     });
+    expect(search).toHaveBeenCalledWith(
+      expect.stringContaining("signup login dashboard"),
+    );
   });
 
   it("builds an evidence-backed signup plan for a directly named app", async () => {

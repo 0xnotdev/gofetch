@@ -455,6 +455,7 @@ export class GeminiPlanningModel {
       "Multiple viable candidates are expected in discovery and do not make the input ambiguous. When the user gives a capability category plus useful constraints, rank the candidates and select the strongest evidence-backed match.",
       "Use ambiguous only when the user omitted the capability or essential requirement needed to rank candidates responsibly. Then set appName to null and ask exactly one focused clarification question.",
       "Only select official-source URLs exactly as they appear in the supplied search results.",
+      "When the selected app uses account-scoped credentials and the results include an official signup, login, dashboard, or account-console URL, include that URL alongside the documentation sources so the browser can begin from a verified account path.",
       `USER_INPUT_DATA=${JSON.stringify(input.query)}`,
       `SEARCH_RESULTS_DATA=${JSON.stringify(input.searchResults)}`,
     ].join("\n");

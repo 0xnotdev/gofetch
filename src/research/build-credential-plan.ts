@@ -59,7 +59,7 @@ async function buildCredentialPlanWithoutCleanup(
   dependencies: CredentialPlanDependencies,
 ): Promise<CredentialPlan> {
   const searchResults = await dependencies.research.search(
-    `${query} official API developer documentation authentication credentials`,
+    `${query} official API developer documentation authentication credentials signup login dashboard`,
   );
   const target = await dependencies.planner.resolveTarget({ query, searchResults });
 
