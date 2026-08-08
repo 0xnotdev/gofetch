@@ -124,6 +124,55 @@ describe("buildCredentialPlan", () => {
     });
   });
 
+  it("adds a related official account route when the resolver selected only documentation", async () => {
+    const documentationUrl = "https://docs.example.test/api/authentication";
+    const accountUrl = "https://www.example.test/auth";
+    const fetch = vi.fn(async (url: string) => ({
+      url,
+      content:
+        url === accountUrl
+          ? "<a href=\"/signup\">Sign up</a>"
+          : "API authentication uses account-scoped API keys.",
+    }));
+
+    const plan = await buildCredentialPlan("Example Platform", {
+      research: {
+        async search() {
+          return [
+            { title: "Example API docs", url: documentationUrl },
+            { title: "Example account login", url: accountUrl },
+          ];
+        },
+        fetch,
+      },
+      planner: {
+        async resolveTarget() {
+          return {
+            inputMode: "direct",
+            appName: "Example Platform",
+            selectionReason: "The user named it.",
+            clarificationQuestion: null,
+            requiresConfirmation: false,
+            officialSourceUrls: [documentationUrl],
+          };
+        },
+        async classifyPath({ documents }) {
+          expect(documents.map((document) => document.url)).toContain(accountUrl);
+          return {
+            path: "signup_required",
+            credentialTypes: ["api_key"],
+            summary: "Create an account and generate an API key.",
+            signupUrl: accountUrl,
+            blocker: null,
+          };
+        },
+      },
+    });
+
+    expect(fetch).toHaveBeenCalledWith(accountUrl);
+    expect(plan.signupUrl).toBe(accountUrl);
+  });
+
   it("requires confirmation before acting on an app selected from requirements", async () => {
     const plan = await buildCredentialPlan("an email delivery app with a free API", {
       research: {

@@ -80,9 +80,13 @@ async function buildCredentialPlanWithoutCleanup(
   }
 
   const resultUrls = new Set(searchResults.map((result) => result.url));
-  const officialSources = target.officialSourceUrls
+  const selectedOfficialSources = target.officialSourceUrls
     .filter((url) => resultUrls.has(url) && new URL(url).protocol === "https:")
     .slice(0, 3);
+  const officialSources = [
+    ...selectedOfficialSources,
+    ...relatedOfficialAccountRoutes(searchResults, selectedOfficialSources),
+  ].slice(0, 3);
 
   if (officialSources.length === 0) {
     return {
@@ -168,4 +172,40 @@ async function buildCredentialPlanWithoutCleanup(
     ...classification,
     officialSources: fetchedOfficialSources,
   };
+}
+
+function relatedOfficialAccountRoutes(
+  searchResults: SearchResult[],
+  selectedOfficialSources: string[],
+): string[] {
+  const selectedRoots = selectedOfficialSources.map((url) => siteRoot(url));
+
+  return searchResults
+    .map((result) => ({ ...result, url: secureUrl(result.url) }))
+    .filter(
+      (result): result is SearchResult & { url: string } =>
+        result.url !== null &&
+        !selectedOfficialSources.includes(result.url) &&
+        selectedRoots.includes(siteRoot(result.url)) &&
+        /signup|sign up|register|login|log in|auth|dashboard|console|account/i.test(
+          `${result.title} ${result.url}`,
+        ),
+    )
+    .map((result) => result.url);
+}
+
+function secureUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function siteRoot(value: string): string {
+  const labels = new URL(value).hostname.split(".");
+  return labels.slice(-2).join(".");
 }
