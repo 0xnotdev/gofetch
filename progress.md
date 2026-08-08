@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has now succeeded. Checkpoint 7 remains open only until the alternate embedded Google-login handoff reliability fix is deployed and rechecked.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. Checkpoint 7 remains open while the latest credential-name false-positive correction is deployed and rechecked.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -531,6 +531,28 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` — passed; 92 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
 
+### Credential-name false-positive rejection
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptom:** the hosted UI reported `research_agent_composio`—the user-facing name assigned to the key—as an obtained API credential.
+
+**Root cause:** the model-independent DOM filter treated length, distinct characters, and underscores as sufficient secret characteristics. A human-readable lowercase snake-case key name therefore passed when its surrounding table row contained API-key wording.
+
+**Delivered:**
+
+- Rejects human-readable lowercase snake-case and kebab-case labels unless the value has a recognized credential prefix and additional secret characteristics.
+- Requires a stronger secret signal: numeric/base64-like characters, mixed case, or a recognized generic credential prefix, in addition to entropy and credential context.
+- Applies the same checks inside the page scan and again at the server boundary.
+- When a key name appears before a real token, skips the name and returns the token. When only a name or masked token exists, refuses to report credential success.
+
+**Verification evidence:**
+
+- The exact `research_agent_composio` name-first regression was observed being returned as the credential before the fix; it now skips that value and returns the following `ak_…` token.
+- The bounded no-action test now presents only `research_agent_composio` and verifies that no credential success is emitted.
+- `npm test` — passed; 92 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup — passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -561,3 +583,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Model-independent visible credential retrieval added | Pending commit; 89 tests, typecheck, lint, production build, and diff check passed; a newly rendered key can be returned directly from the verified page after one Create action without relying on model schema output |
 | 2026-08-08 | No-action credential recovery added | Pending commit; 91 tests, typecheck, lint, production build, and diff check passed; `No action found` now checks for and returns an already visible key before bounded reinspection |
 | 2026-08-08 | First full hosted credential run succeeded; embedded Google handoff repaired | Pending commit; user-confirmed same-session login, agent-created key, and returned credential; 92 tests and full production verification pass for alternate identity UI |
+| 2026-08-08 | Credential-name false positive rejected | Pending commit; exact `research_agent_composio` repro corrected; 92 tests and full production verification pass |

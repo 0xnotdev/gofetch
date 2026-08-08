@@ -616,10 +616,21 @@ async function readVisibleCredential(
           return false;
         }
         const distinctCharacters = new Set(value.toLowerCase()).size;
-        const hasStructuralSignal =
-          /[0-9._~+/=-]/.test(value) ||
+        const knownCredentialPrefix =
+          /^(?:ak|sk|pk|rk|ghp|gho|ghu|github_pat|xox[baprs]|ya29)[_.-]/i.test(
+            value,
+          );
+        const humanReadableLabel =
+          /^[a-z]+(?:[_-][a-z]+)+$/.test(value) && !knownCredentialPrefix;
+        const hasSecretSignal =
+          knownCredentialPrefix ||
+          /[0-9+\/=~.]/.test(value) ||
           (/[a-z]/.test(value) && /[A-Z]/.test(value));
-        return distinctCharacters >= 8 && hasStructuralSignal;
+        return (
+          distinctCharacters >= 8 &&
+          hasSecretSignal &&
+          !humanReadableLabel
+        );
       }
     });
   } catch {
@@ -683,10 +694,17 @@ function looksLikeCredentialValue(value: string): boolean {
     return false;
   }
   const distinctCharacters = new Set(value.toLowerCase()).size;
-  const hasStructuralSignal =
-    /[0-9._~+/=-]/.test(value) ||
+  const knownCredentialPrefix =
+    /^(?:ak|sk|pk|rk|ghp|gho|ghu|github_pat|xox[baprs]|ya29)[_.-]/i.test(
+      value,
+    );
+  const humanReadableLabel =
+    /^[a-z]+(?:[_-][a-z]+)+$/.test(value) && !knownCredentialPrefix;
+  const hasSecretSignal =
+    knownCredentialPrefix ||
+    /[0-9+\/=~.]/.test(value) ||
     (/[a-z]/.test(value) && /[A-Z]/.test(value));
-  return distinctCharacters >= 8 && hasStructuralSignal;
+  return distinctCharacters >= 8 && hasSecretSignal && !humanReadableLabel;
 }
 
 function isCredentialCreationAction(action: string): boolean {

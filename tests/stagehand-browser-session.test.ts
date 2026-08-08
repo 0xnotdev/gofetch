@@ -666,10 +666,16 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         .fn()
         .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
       waitForTimeout: vi.fn().mockResolvedValue(undefined),
-      evaluate: vi.fn().mockResolvedValue({
-        value: "ak_live_visible_1234567890",
-        context: "New API key — copy and save this credential",
-      }),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce({
+          value: "research_agent_composio",
+          context: "Name Token Access — API key credential",
+        })
+        .mockResolvedValue({
+          value: "ak_live_visible_1234567890",
+          context: "New API key — copy and save this credential",
+        }),
     };
     const extract = vi.fn().mockResolvedValue({
       kind: "act",
@@ -725,7 +731,10 @@ describe("BrowserbaseStagehandSessionFactory", () => {
         .fn()
         .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
       waitForTimeout: vi.fn().mockResolvedValue(undefined),
-      evaluate: vi.fn().mockResolvedValue(null),
+      evaluate: vi.fn().mockResolvedValue({
+        value: "research_agent_composio",
+        context: "Name Token Access — API key credential",
+      }),
     };
     const extract = vi.fn().mockResolvedValue({
       kind: "act",
