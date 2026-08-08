@@ -354,6 +354,47 @@ describe("GeminiPlanningModel", () => {
     });
   });
 
+  it("continues from an official API-key document when the classifier is overly cautious", async () => {
+    const sourceUrl = "https://docs.example.test/developers/api-keys";
+    const planner = new GeminiPlanningModel({
+      generate: async () => ({
+        workflowCategory: "insufficient_evidence",
+        credentialTypes: ["API Keys"],
+        summary:
+          "The official document confirms API keys but does not expose a registration link.",
+        signupUrl: null,
+        blocker: null,
+        publicCredential: null,
+      }),
+    });
+
+    await expect(
+      planner.classifyPath({
+        query: "Example Platform",
+        target: {
+          inputMode: "direct",
+          appName: "Example Platform",
+          selectionReason: "The user named it.",
+          clarificationQuestion: null,
+          requiresConfirmation: false,
+          officialSourceUrls: [sourceUrl],
+        },
+        documents: [
+          {
+            url: sourceUrl,
+            content:
+              "API authentication uses project-scoped API keys managed in the account console.",
+          },
+        ],
+      }),
+    ).resolves.toMatchObject({
+      path: "signup_required",
+      credentialTypes: ["api_key"],
+      signupUrl: sourceUrl,
+      publicCredential: null,
+    });
+  });
+
   it("prefers a documented account-creation link over a documentation fallback", async () => {
     const sourceUrl = "https://docs.example.test/identity/api-keys";
     const signupUrl = "https://accounts.example.test/register";

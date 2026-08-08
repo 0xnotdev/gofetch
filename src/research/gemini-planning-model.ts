@@ -303,6 +303,34 @@ function normalizePathClassification(
       ? (rawPath as PathClassification["path"])
       : null;
 
+  const nonPublicCredentialTypes = normalizedTypes.filter(
+    (type) => type !== "public_demo_key",
+  );
+  const officialStartingUrl = documents[0]?.url ?? null;
+  const hasExplicitBlocker =
+    typeof raw.blocker === "string" && raw.blocker.trim().length > 0;
+
+  // A classifier can be conservative when an official document explains that
+  // account-scoped credentials exist but does not publish a registration link.
+  // Starting from that verified official page is safe: the browser remains
+  // constrained to official evidence and reports any real target-side block.
+  if (
+    normalizedPath === "insufficient_evidence" &&
+    raw.publicCredential == null &&
+    officialStartingUrl &&
+    nonPublicCredentialTypes.length > 0 &&
+    !hasExplicitBlocker
+  ) {
+    return {
+      ...raw,
+      path: "signup_required",
+      credentialTypes: [...new Set(normalizedTypes)],
+      signupUrl: documentedSignupUrl(documents) ?? officialStartingUrl,
+      blocker: null,
+      publicCredential: null,
+    };
+  }
+
   if (normalizedPath) {
     return {
       ...raw,
@@ -327,10 +355,6 @@ function normalizePathClassification(
       ? raw.summary
       : "The official evidence did not produce a schema-valid credential path.";
 
-  const nonPublicCredentialTypes = normalizedTypes.filter(
-    (type) => type !== "public_demo_key",
-  );
-  const officialStartingUrl = documents[0]?.url ?? null;
   const describesSignup =
     typeof rawPath === "string" &&
     /sign[ -]?up|register|create (?:an? )?account|account console|dashboard/i.test(
