@@ -353,6 +353,13 @@ The current Browserbase API key resolves its project automatically; no separate 
 - After the corrected worker became live, deployed `NASA Open APIs` planning completed successfully and reached the target-confirmation gate. This closes the infrastructure/quota diagnosis; it does not yet satisfy the final human-pause/resume criterion.
 - The generic, provider-safe `browser_quota_unavailable` response (HTTP 503) remains covered by a regression test for any genuine HTTP 402 browser-minute failure.
 
+### Deployed Composio credential-path correction
+
+- Reproduced the user-observed direct-input failure: a classifier returned `insufficient_evidence` even though the official document established account-scoped API keys. The deterministic regression test failed before the fix.
+- Generic normalization now converts that specific evidence pattern into `signup_required`, beginning at the verified official document rather than guessing a console URL. It preserves explicit target-side blockers and never hardcodes an app name or domain.
+- Deployed `composio ai` now selects Composio, produces `signup_required`, starts one Browserbase session, and reaches `awaiting_human` with an embedded live handoff requesting only signup identity fields. This is the required real shared-session pause.
+- The unchanged-session handback and agent-side API-key retrieval remain live pending the human completing the Composio sign-in/signup step in the embedded browser.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -374,3 +381,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Hosted matrix expanded; Checkpoint 7 remains at 86% | `8ec5c88`, `65f311d`, `6a720aa`; 71 tests, diverse hosted cases, and quota evidence recorded; real signup resume pending quota reset |
 | 2026-08-08 | Fresh-account quota diagnosis and precise deployed error handling | New zero-usage project also returned Browserbase HTTP 402; targeted route test plus typecheck, lint, and production build passed; real signup resume still pending browser access |
 | 2026-08-08 | Fresh-account deployment diagnosis corrected | Direct remote session and deployed NASA planning succeeded after Render secret verification; prior 402 was an old-worker rollout race, not an entitlement failure |
+| 2026-08-08 | Generic direct-API-key path corrected and deployed | `b0c7c79`; 73 tests and production build passed; deployed Composio now reaches real shared-browser human handoff |
