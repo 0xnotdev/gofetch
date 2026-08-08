@@ -250,6 +250,10 @@ function documentedSignupUrl(documents: SourceDocument[]): string | null {
   const anchorPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
 
   for (const document of documents) {
+    const documentRouteScore = accountRouteScore(document.url);
+    if (documentRouteScore > 0) {
+      candidates.push({ url: document.url, score: documentRouteScore });
+    }
     for (const match of document.content.matchAll(anchorPattern)) {
       const href = match[1];
       const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -271,6 +275,18 @@ function documentedSignupUrl(documents: SourceDocument[]): string | null {
   }
 
   return candidates.sort((left, right) => right.score - left.score)[0]?.url ?? null;
+}
+
+function accountRouteScore(value: string): number {
+  try {
+    const path = new URL(value).pathname.toLowerCase();
+    if (/(^|\/)(signup|sign-up|register)(\/|$)/.test(path)) return 5;
+    if (/(^|\/)(login|log-in|auth|authenticate)(\/|$)/.test(path)) return 4;
+    if (/(^|\/)(dashboard|console|account)(\/|$)/.test(path)) return 3;
+  } catch {
+    // Source-document URLs have already been validated, but preserve safe fallback.
+  }
+  return 0;
 }
 
 function normalizePathClassification(
