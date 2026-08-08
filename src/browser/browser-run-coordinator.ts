@@ -241,8 +241,8 @@ export class BrowserRunCoordinator {
       await active.session.navigate(plan.signupUrl, controller.signal);
       active.phase = "agent";
       return await this.#execute(active);
-    } catch {
-      const result = this.#failureFor(active);
+    } catch (error) {
+      const result = this.#failureFor(active, error);
       await this.#finish(active);
       return result;
     }
@@ -269,10 +269,23 @@ export class BrowserRunCoordinator {
             privateInput,
           )
         : await session.execute(active.request, active.controller.signal);
-    } catch {
-      const result = this.#failureFor(active);
-      await this.#finish(active);
-      return result;
+    } catch (firstError) {
+      if (!active.controller.signal.aborted) {
+        try {
+          observation = await session.execute(
+            active.request,
+            active.controller.signal,
+          );
+        } catch (retryError) {
+          const result = this.#failureFor(active, retryError);
+          await this.#finish(active);
+          return result;
+        }
+      } else {
+        const result = this.#failureFor(active, firstError);
+        await this.#finish(active);
+        return result;
+      }
     }
 
     if (observation.kind === "human_required") {
@@ -351,7 +364,7 @@ export class BrowserRunCoordinator {
     return result;
   }
 
-  #failureFor(active: ActiveBrowserRun): BrowserRunResult {
+  #failureFor(active: ActiveBrowserRun, error?: unknown): BrowserRunResult {
     const abortReason = active.controller.signal.reason as
       | { code?: string }
       | undefined;
@@ -369,7 +382,7 @@ export class BrowserRunCoordinator {
     }
     return {
       status: "technical_failure",
-      reason: "The browser session failed before the task completed.",
+      reason: browserFailureReason(error),
     };
   }
 
@@ -377,10 +390,10 @@ export class BrowserRunCoordinator {
     clearTimeout(active.timeout);
     if (!active.closePromise) {
       active.closePromise = (async () => {
-      try {
+        try {
           await active.session?.close();
-      } catch {
-        // Stagehand close is already a force-close. There is no safer retry path.
+        } catch {
+          // Stagehand close is already a force-close. There is no safer retry path.
         }
       })();
     }
@@ -389,6 +402,17 @@ export class BrowserRunCoordinator {
       this.#activeRun = null;
     }
   }
+}
+
+function browserFailureReason(error: unknown): string {
+  if (!(error instanceof Error) || !error.message.trim()) {
+    return "The browser session failed before the task completed.";
+  }
+
+  const message = error.message
+    .replace(/(?:bb_live_|sk-|ak_)[A-Za-z0-9_-]+/g, "<redacted>")
+    .slice(0, 300);
+  return `The browser could not continue after a retry: ${message}`;
 }
 
 export function buildAllowedDomains(urls: string[]): string[] {

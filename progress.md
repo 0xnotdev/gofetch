@@ -360,6 +360,25 @@ The current Browserbase API key resolves its project automatically; no separate 
 - Deployed `composio ai` now selects Composio, produces `signup_required`, starts one Browserbase session, and reaches `awaiting_human` with an embedded live handoff requesting only signup identity fields. This is the required real shared-session pause.
 - The unchanged-session handback and agent-side API-key retrieval remain live pending the human completing the Composio sign-in/signup step in the embedded browser.
 
+### Resumed-browser recovery and diagnostics
+
+**Status:** implementation complete; live credential retrieval remains pending
+
+**Reported symptom:** after a successful human login and handback, the browser run ended with the generic `technical_failure` message.
+
+**Delivered:**
+
+- Retries one transient `execute` failure in the existing Browserbase session after handback; it does not create a replacement session or ask the human to repeat login.
+- Preserves the human/agent control boundary while retrying and still closes the session on a genuine terminal failure.
+- Surfaces a short, redacted browser diagnostic only after the retry fails, so the next real provider issue is actionable without exposing credentials.
+- Adds regression tests for both a successful resumed-session retry and a double failure with Browserbase-like secret redaction.
+
+**Verification evidence:**
+
+- `npm test` — passed; 82 tests across 14 files.
+- `npm run typecheck` and `npm run lint` — passed.
+- A production build and deployed handback retest remain required before this can count as the final credential-retrieval acceptance.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -382,3 +401,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Fresh-account quota diagnosis and precise deployed error handling | New zero-usage project also returned Browserbase HTTP 402; targeted route test plus typecheck, lint, and production build passed; real signup resume still pending browser access |
 | 2026-08-08 | Fresh-account deployment diagnosis corrected | Direct remote session and deployed NASA planning succeeded after Render secret verification; prior 402 was an old-worker rollout race, not an entitlement failure |
 | 2026-08-08 | Generic direct-API-key path corrected and deployed | `b0c7c79`; 73 tests and production build passed; deployed Composio now reaches real shared-browser human handoff |
+| 2026-08-08 | Resumed-session recovery added | Pending commit; 82 tests, typecheck, and lint passed; a transient post-handback browser failure retries in the same session and double failures are safely diagnosable |

@@ -183,6 +183,61 @@ describe("BrowserRunCoordinator", () => {
     expect(session.close).toHaveBeenCalledOnce();
   });
 
+  it("retries a transient resumed-session failure before reporting a failure", async () => {
+    const { factory, session } = createBrowserFake();
+    vi.mocked(session.execute)
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "Sign in in the live browser.",
+        currentUrl: "https://accounts.example.test/login",
+      })
+      .mockRejectedValueOnce(new Error("temporary CDP transport reset"))
+      .mockResolvedValueOnce({
+        kind: "completed",
+        summary: "Reached the API-key settings.",
+        currentUrl: "https://accounts.example.test/settings/keys",
+      });
+    const coordinator = new BrowserRunCoordinator({ factory });
+
+    const paused = await coordinator.run(signupPlan);
+    if (paused.status !== "awaiting_human") {
+      throw new Error("Expected the browser run to pause.");
+    }
+
+    await expect(coordinator.resume("session-123")).resolves.toMatchObject({
+      status: "completed",
+      currentUrl: "https://accounts.example.test/settings/keys",
+    });
+    expect(session.execute).toHaveBeenCalledTimes(3);
+    expect(session.close).toHaveBeenCalledOnce();
+  });
+
+  it("reports a safe diagnostic if the resumed-session retry also fails", async () => {
+    const { factory, session } = createBrowserFake();
+    vi.mocked(session.execute)
+      .mockResolvedValueOnce({
+        kind: "human_required",
+        summary: "Sign in in the live browser.",
+        currentUrl: "https://accounts.example.test/login",
+      })
+      .mockRejectedValueOnce(new Error("temporary CDP transport reset"))
+      .mockRejectedValueOnce(new Error("bb_live_secret-value disconnected"));
+    const coordinator = new BrowserRunCoordinator({ factory });
+
+    const paused = await coordinator.run(signupPlan);
+    if (paused.status !== "awaiting_human") {
+      throw new Error("Expected the browser run to pause.");
+    }
+
+    await expect(coordinator.resume("session-123")).resolves.toEqual({
+      status: "technical_failure",
+      reason:
+        "The browser could not continue after a retry: <redacted> disconnected",
+    });
+    expect(session.execute).toHaveBeenCalledTimes(3);
+    expect(session.close).toHaveBeenCalledOnce();
+  });
+
   it("passes private human input as an ephemeral value on same-session resume", async () => {
     const { factory, session } = createBrowserFake();
     vi.mocked(session.execute)
