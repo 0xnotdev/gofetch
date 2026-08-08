@@ -811,6 +811,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 - Reorganized the README around reviewer outcomes: live app, demo, workflow, verified acceptance, safety, stack, setup, deployment, and limitations.
 - Updated `submission.md` from its obsolete pending/71-test state to the current completed audit with 104 passing tests and user-verified Twilio and Composio workflows.
 - Corrected top-level progress from 86%/6-of-7 to 100%/7-of-7 and aligned lifecycle documentation with the deployed quota behavior.
+- Updated the GitHub About panel with an accurate agent description, the live application homepage, and relevant project topics.
 - Verified the Loom link and thumbnail through Loom's official oEmbed metadata.
 
 **Verification evidence:**
