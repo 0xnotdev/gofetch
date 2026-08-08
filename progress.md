@@ -647,7 +647,9 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 ### Multi-page generated-key modal capture
 
-**Status:** implementation complete; deployed recheck pending
+**Status:** implementation complete and pushed; hosted human recheck pending
+
+**Implementation commit:** `ddfd6f3`
 
 **Reported symptom:** after login, GoFetch created an API key and the one-time value was visibly present in the `API key created` modal, but the run ended with `The authenticated page remained unreadable after two safe recovery attempts.`
 
@@ -667,6 +669,7 @@ The current Browserbase API key resolves its project automatically; no separate 
 
 - A multi-page regression was observed returning the exact two-recovery blocker while the newer dashboard page exposed a generated key; it now returns that credential.
 - A deep-modal regression was observed returning the same blocker when only the surrounding modal said `API key created`; it now returns that credential while existing name-field false-positive tests remain green.
+- The Render service remained healthy with HTTP 200 after the automatic deployment was triggered.
 - `npm test` - passed; 97 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
@@ -705,4 +708,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Remote clipboard credential channel added | Pending commit; exact post-create Copy/clipboard/twelve-step repro corrected; 93 tests and full production verification pass |
 | 2026-08-08 | Visible-modal-before-recovery ordering corrected | Pending commit; screenshot-equivalent malformed-output/visible-key repro corrected; 94 tests and full production verification pass |
 | 2026-08-08 | Immediate pre-login handoff added and deployed | `9674044`; hosted Composio reached the human takeover in 15.2 seconds, the same-session regression resumes to a credential, and 95 tests plus full production verification pass |
-| 2026-08-08 | Multi-page generated-key modal capture added | Pending commit; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
+| 2026-08-08 | Multi-page generated-key modal capture added | `ddfd6f3`; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |
