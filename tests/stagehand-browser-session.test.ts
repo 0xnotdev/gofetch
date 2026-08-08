@@ -786,6 +786,129 @@ describe("BrowserbaseStagehandSessionFactory", () => {
     expect(extract).toHaveBeenCalledTimes(2);
   });
 
+  it("reads a generated key from the newest page after an authentication popup flow", async () => {
+    const stalePage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi.fn().mockReturnValue("https://docs.example.test/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(null),
+    };
+    const dashboardPage = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValue({
+          value: "ak_popup_example_1234567890",
+          context: "API key created - copy this key now",
+          localContext: "Token",
+        }),
+    };
+    const extract = vi.fn().mockResolvedValue({ malformed: true });
+    const act = vi.fn().mockResolvedValue({
+      success: false,
+      message: "Failed to perform act: No action found",
+    });
+    const stagehand = ({
+      browserbaseSessionID: "bb-popup-generated-key",
+      browserbaseDebugURL:
+        "https://www.browserbase.com/live/bb-popup-generated-key",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([stalePage, dashboardPage]) },
+      extract,
+      act,
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Create and retrieve an API key after login.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: { credential: "ak_popup_example_1234567890" },
+    });
+    expect(dashboardPage.evaluate).toHaveBeenCalled();
+  });
+
+  it("uses the surrounding credential modal when the key field has no local label", async () => {
+    const page = {
+      goto: vi.fn().mockResolvedValue(undefined),
+      url: vi
+        .fn()
+        .mockReturnValue("https://dashboard.example.test/settings/api-keys"),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValue({
+          value: "ak_modal_example_1234567890",
+          context: "",
+          localContext: "Token",
+          ancestorContext:
+            "API key created. Copy this key now because it will not be shown again.",
+        }),
+    };
+    const extract = vi.fn().mockResolvedValue({ malformed: true });
+    const stagehand = ({
+      browserbaseSessionID: "bb-deep-modal-key",
+      browserbaseDebugURL: "https://www.browserbase.com/live/bb-deep-modal-key",
+      init: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      context: { pages: vi.fn().mockReturnValue([page]) },
+      extract,
+      act: vi.fn().mockResolvedValue({
+        success: false,
+        message: "Failed to perform act: No action found",
+      }),
+    } as unknown) as StagehandAdapter;
+    const StagehandFake = (class {
+      constructor() {
+        return stagehand;
+      }
+    } as unknown) as StagehandAdapterConstructor;
+    const session = await new BrowserbaseStagehandSessionFactory({
+      apiKey: "browserbase-secret",
+      stagehandConstructor: StagehandFake,
+    }).create(new AbortController().signal);
+    await session.setAllowedDomains(["docs.example.test"]);
+
+    await expect(
+      session.execute(
+        {
+          appName: "Any Service",
+          planSummary: "Return the key already shown in the creation modal.",
+          credentialTypes: ["api_key"],
+          officialSources: ["https://docs.example.test/api-keys"],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      kind: "credential_obtained",
+      credential: { credential: "ak_modal_example_1234567890" },
+    });
+  });
+
   it("returns an already visible key before treating No action found as terminal", async () => {
     const page = {
       goto: vi.fn().mockResolvedValue(undefined),

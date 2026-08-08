@@ -6,7 +6,7 @@
 
 **Current checkpoint:** Checkpoint 7 — Deployment and submission
 
-**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. The deterministic pre-login handoff now also passes on the deployed service; Checkpoint 7 remains open until the current build is revalidated through human login and final credential return.
+**Current status:** The first genuine hosted third-party login, unchanged-session handback, API-key creation, and credential return has succeeded. The deterministic pre-login handoff passes on the deployed service; Checkpoint 7 remains open while the multi-page generated-key modal fix is deployed and revalidated.
 
 The complete product definition, architecture, acceptance criteria, and Checkpoints 0–7 live in `scope.md`. This file only records actual build progress and verification evidence as work is completed.
 
@@ -645,6 +645,31 @@ The current Browserbase API key resolves its project automatically; no separate 
 - `npm test` - passed; 95 tests across 14 files.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
 
+### Multi-page generated-key modal capture
+
+**Status:** implementation complete; deployed recheck pending
+
+**Reported symptom:** after login, GoFetch created an API key and the one-time value was visibly present in the `API key created` modal, but the run ended with `The authenticated page remained unreadable after two safe recovery attempts.`
+
+**Root causes:**
+
+- The session wrapper permanently selected the first page returned by the browser context. External authentication can leave an older page before the active dashboard page, so model actions operated on the visible dashboard while deterministic credential scans inspected the stale page.
+- Credential context was limited to the field's parent and grandparent. Deep component nesting left the key field without local API-key wording even though its surrounding creation modal clearly identified it.
+
+**Delivered:**
+
+- Selects the newest nonblank browser page and reacquires it after private input, model extraction, navigation actions, and recovery actions.
+- Runs verified-domain and external-identity checks against the reacquired page before reading or returning anything.
+- Includes the nearest dialog, modal, form, section, or main container as credential context while keeping Name, Label, and Description rejection local to the candidate field.
+- Preserves the same generic secret-shape, masking, source-domain, and credential-type validation; no app-specific route or selector was added.
+
+**Verification evidence:**
+
+- A multi-page regression was observed returning the exact two-recovery blocker while the newer dashboard page exposed a generated key; it now returns that credential.
+- A deep-modal regression was observed returning the same blocker when only the surrounding modal said `API key created`; it now returns that credential while existing name-field false-positive tests remain green.
+- `npm test` - passed; 97 tests across 14 files.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`, and debug-marker cleanup - passed.
+
 ## Build log
 
 | Date | Progress | Evidence |
@@ -680,3 +705,4 @@ The current Browserbase API key resolves its project automatically; no separate 
 | 2026-08-08 | Remote clipboard credential channel added | Pending commit; exact post-create Copy/clipboard/twelve-step repro corrected; 93 tests and full production verification pass |
 | 2026-08-08 | Visible-modal-before-recovery ordering corrected | Pending commit; screenshot-equivalent malformed-output/visible-key repro corrected; 94 tests and full production verification pass |
 | 2026-08-08 | Immediate pre-login handoff added and deployed | `9674044`; hosted Composio reached the human takeover in 15.2 seconds, the same-session regression resumes to a credential, and 95 tests plus full production verification pass |
+| 2026-08-08 | Multi-page generated-key modal capture added | Pending commit; newest-page selection and semantic modal ancestry correct the exact visible-key/two-recovery blocker; 97 tests and full production verification pass |

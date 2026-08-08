@@ -97,6 +97,7 @@ interface VisibleCredentialCandidate {
   value: string;
   context: string;
   localContext?: string;
+  ancestorContext?: string;
 }
 
 export interface StagehandAdapter {
@@ -238,7 +239,7 @@ class StagehandBrowserSession implements BrowserSession {
     signal: AbortSignal,
     privateInput?: PrivateBrowserInput,
   ): Promise<BrowserObservation> {
-    const page = this.#page();
+    let page = this.#page();
     if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
       return externalIdentityHandoff(page.url());
     }
@@ -257,6 +258,7 @@ class StagehandBrowserSession implements BrowserSession {
         },
       );
       throwIfAborted(signal);
+      page = this.#page();
       if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
         return externalIdentityHandoff(page.url());
       }
@@ -292,12 +294,19 @@ class StagehandBrowserSession implements BrowserSession {
     let noActionFoundFailures = 0;
     for (let stepNumber = 1; stepNumber <= 12; stepNumber += 1) {
       throwIfAborted(signal);
+      page = this.#page();
+      if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
+        return externalIdentityHandoff(page.url());
+      }
+      this.#assertAllowedUrl(page.url());
+
       const extracted = await this.#stagehand.extract(
         buildStepInstruction(request, stepNumber),
         browserObservationSchema,
         { timeout: 45_000 },
       );
       throwIfAborted(signal);
+      page = this.#page();
       this.#assertAllowedUrl(page.url());
 
       const parsed = browserObservationSchema.safeParse(extracted);
@@ -338,6 +347,7 @@ class StagehandBrowserSession implements BrowserSession {
           "The structured inspection was inconclusive. Take exactly one safe mechanical step on the current verified service toward API keys, access tokens, credentials, developer settings, or project settings. If a newly generated credential is visible, click the Copy control beside the secret value, not beside its name. Otherwise, if a create-key form is visible, fill only a non-sensitive required label with GoFetch or click its create/generate button. Never enter identity, login, OTP, CAPTCHA, payment, card, or credential values, and never leave the current verified service.",
         );
         throwIfAborted(signal);
+        page = this.#page();
         if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
           return externalIdentityHandoff(page.url());
         }
@@ -407,6 +417,7 @@ class StagehandBrowserSession implements BrowserSession {
           "There is no visible human-only input, verification challenge, or CAPTCHA on this page. Click one visible official link or button that advances toward sign-up, login, get started, the dashboard, or API keys. Do not enter or submit data.",
         );
         throwIfAborted(signal);
+        page = this.#page();
         if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
           return externalIdentityHandoff(page.url());
         }
@@ -482,6 +493,7 @@ class StagehandBrowserSession implements BrowserSession {
 
       const actionResult = await this.#stagehand.act(decision.action);
       throwIfAborted(signal);
+      page = this.#page();
       if (isExternalIdentityProvider(page.url(), this.#allowedDomains)) {
         return externalIdentityHandoff(page.url());
       }
@@ -555,7 +567,12 @@ class StagehandBrowserSession implements BrowserSession {
   }
 
   #page(): StagehandPageAdapter {
-    const page = this.#stagehand.context.pages()[0];
+    const pages = this.#stagehand.context.pages();
+    const page =
+      [...pages]
+        .reverse()
+        .find((candidate) => candidate.url() !== "about:blank") ??
+      pages[pages.length - 1];
     if (!page) {
       throw new Error("The Browserbase session has no active page.");
     }
@@ -677,6 +694,12 @@ async function readVisibleCredential(
           .join(" ")
           .slice(0, 500);
       };
+      const elementAncestorContext = (element: Element): string =>
+        (
+          element.closest(
+            '[role="dialog"], [aria-modal="true"], form, section, main',
+          ) as HTMLElement | null
+        )?.innerText?.slice(0, 2_000) ?? "";
       const values: Array<VisibleCredentialCandidate> = [];
 
       for (const element of document.querySelectorAll(
@@ -695,6 +718,7 @@ async function readVisibleCredential(
             value,
             context: elementContext(element),
             localContext: elementLocalContext(element),
+            ancestorContext: elementAncestorContext(element),
           });
         }
       }
@@ -711,6 +735,7 @@ async function readVisibleCredential(
             value: textNode.textContent,
             context: elementContext(parent),
             localContext: elementLocalContext(parent),
+            ancestorContext: elementAncestorContext(parent),
           });
         }
         textNode = walker.nextNode();
@@ -719,7 +744,9 @@ async function readVisibleCredential(
       for (const entry of values) {
         const value = entry.value.trim();
         if (
-          contextPattern.test(entry.context) &&
+          contextPattern.test(
+            `${entry.context} ${entry.ancestorContext ?? ""}`,
+          ) &&
           !/\b(?:name|label|description)\b/i.test(entry.localContext ?? "") &&
           looksLikeCredential(value)
         ) {
@@ -781,7 +808,9 @@ async function readVisibleCredential(
     typeof candidate.value !== "string" ||
     typeof candidate.context !== "string" ||
     (candidate.localContext !== undefined &&
-      typeof candidate.localContext !== "string")
+      typeof candidate.localContext !== "string") ||
+    (candidate.ancestorContext !== undefined &&
+      typeof candidate.ancestorContext !== "string")
   ) {
     return null;
   }
@@ -790,7 +819,7 @@ async function readVisibleCredential(
     !looksLikeCredentialValue(value) ||
     /\b(?:name|label|description)\b/i.test(candidate.localContext ?? "") ||
     !/api.?key|access.?token|secret|credential|bearer|personal.?access|client.?secret/i.test(
-      candidate.context,
+      `${candidate.context} ${candidate.ancestorContext ?? ""}`,
     )
   ) {
     return null;
