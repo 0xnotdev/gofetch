@@ -122,7 +122,8 @@ export class BrowserRunCoordinator {
 
   constructor(options: BrowserRunCoordinatorOptions) {
     this.#factory = options.factory;
-    this.#maxSessionStarts = options.maxSessionStarts ?? 3;
+    this.#maxSessionStarts =
+      options.maxSessionStarts ?? Number.POSITIVE_INFINITY;
     this.#maxRunDurationMs = options.maxRunDurationMs ?? 12 * 60 * 1_000;
     this.#minRunIntervalMs = options.minRunIntervalMs ?? 1_000;
     this.#now = options.now ?? Date.now;

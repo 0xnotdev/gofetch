@@ -455,6 +455,22 @@ describe("BrowserRunCoordinator", () => {
     expect(factory.create).toHaveBeenCalledOnce();
   });
 
+  it("does not permanently exhaust browser starts when no explicit cap is configured", async () => {
+    const { factory } = createBrowserFake();
+    const coordinator = new BrowserRunCoordinator({
+      factory,
+      minRunIntervalMs: 0,
+    });
+
+    for (let runNumber = 0; runNumber < 4; runNumber += 1) {
+      await expect(coordinator.run(signupPlan)).resolves.toMatchObject({
+        status: "completed",
+      });
+    }
+
+    expect(factory.create).toHaveBeenCalledTimes(4);
+  });
+
   it("throttles rapid repeat session starts", async () => {
     const { factory } = createBrowserFake();
     let now = 1_000;

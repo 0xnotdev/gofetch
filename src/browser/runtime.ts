@@ -24,7 +24,6 @@ function getConfiguredCoordinator(): BrowserRunCoordinator {
       apiKey: env.BROWSERBASE_API_KEY,
       model: env.BROWSERBASE_BROWSER_MODEL,
     }),
-    maxSessionStarts: 3,
     maxRunDurationMs: 12 * 60 * 1_000,
   });
 
